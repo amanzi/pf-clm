@@ -1,0 +1,52 @@
+module clm_interface_module
+  implicit none
+  use clm_type_module, only clm_type
+  
+  private
+
+  public:: clm_create, &
+       clm_destroy, &
+       clm_setup, &
+       clm_setup_structured, &
+       clm_advance, &
+       clm_advance_structured
+
+contains
+
+
+  
+  function clm_create() result(this)
+    type(clm_type),pointer:: this
+
+  end function clm_create
+      
+  subroutine clm_destroy(this, ierr)
+    type(clm_type) this
+    int ierr
+
+    ierr = 0
+  end subroutine clm_destroy
+      
+  subroutine clm_setup(this)
+    type(clm_type) this
+  end subroutine clm_setup
+
+
+  subroutine clm_setup_structured(this)
+    type(clm_type) this
+  end subroutine clm_setup_structured
+
+  subroutine clm_advance(this)
+    type(clm_type) this
+  end subroutine clm_advance
+
+  subroutine clm_advance_structured(this)
+    type(clm_type) this
+  end subroutine clm_advance_structured
+
+
+
+end module clm_interface_module
+
+
+

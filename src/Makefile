@@ -1,102 +1,37 @@
-##
-## File:	$URL$
-## Package:	Parflow
-## Copyright:	(c) 1997-2008 Lawrence Livermore National Security, LLC
-## Revision:	$LastChangedRevision: 2026 $
-## Modified:	$LastChangedDate: 2008-02-28 16:23:19 -0800 (Thu, 28 Feb 2008) $
-
-
-PARFLOW	      =	..
 SRCDIR	      =	.
-SUBDIR        = clm
+OBJECT        = .
 
-OBJECT        = ..
+
+#HOST_SOURCE   = clm_host_info_structured
+HOST_SOURCE   = clm_host_info_unstructured
 
 default: all
 
 include $(OBJECT)/config/Makefile.config
+FCFLAGS += -I $(CLM_UTILS_DIR) -I $(CLM_CLM1D_DIR) -I $(CLM_DRV_DIR)
 
 # Order is important due to .mod file creation
 OBJS = \
-	parflow_config.o\
-	precision.o\
-	infnan.o\
-	clm_varpar.o\
-	clmtype.o\
-	drv_module.o\
-	clm_varcon.o\
-	drv_tilemodule.o\
-	drv_gridmodule.o\
-	clm_typini.o\
-	pf_readout.o\
-	close_files.o\
-	open_files.o\
-	pf_couple.o\
-	clm_balchk.o\
-	clm_lake.o\
-	clm_subdiv.o\
-	drv_2dout.o\
-	drv_readvegpf.o\
-	clm_combin.o\
-	clm_leaftem.o\
-	clm_surfalb.o\
-	drv_almaout.o\
-	drv_readvegtf.o\
-	clm_combo.o\
-	clm_main.o\
-	clm_surfrad.o\
-	drv_astp.o\
-	drv_restart.o\
-	clm_compact.o\
-	clm_meltfreeze.o\
-	clm_thermal.o\
-	drv_clm2g.o\
-	drv_t2g.o\
-	clm_condch.o\
-	clm_obuini.o\
-	clm_thermalk.o\
-	drv_clmini.o\
-	drv_tick.o\
-	clm_condcq.o\
-	clm_obult.o\
-	drv_g2clm.o\
-	clm_coszen.o\
-	clm_psi.o\
-	clm_tridia.o\
-	drv_getforce.o\
-	endrun.o\
-	clm_dynvegpar.o\
-	clm_qsadv.o\
-	clm_twostream.o\
-	drv_gridave.o\
-	clm_hydro_canopy.o\
-	clm_snowage.o\
-	clm_hydro_irrig.o\
-	clm_snowalb.o\
-	clm_hydro_snow.o\
-	clm_soilalb.o\
-	clm_hydro_soil.o\
-	drv_pout.o\
-	clm_hydro_wetice.o\
-	clm_stomata.o\
-	drv_1dout.o\
-	drv_readclmin.o\
-	clm_global.o\
-        clm.o
+	clm_type.o \
+	$(HOST_SOURCE).o \
+	clm_host_transfer.o
+#	clm.o
 
-$(PARFLOW_LIB_DIR)/$(CLM_LIB): $(OBJS)
-	ar rus $(PARFLOW_LIB_DIR)/$(CLM_LIB) $(OBJS)
 
-all: $(PARFLOW_LIB_DIR)/$(CLM_LIB)
+all: subdirs $(OBJS)
+
+subdirs:
+	@cd utils; make
+	@cd clm1d; make
+	@cd drv; make
 
 clean:
-	$(PARFLOW_CLEAN)
-	@rm -f *.mod
+	$(CLM_CLEAN)
 
-veryclean: clean
-	@$(RM) Makefile
-
-include $(SRCDIR)/Makefile.depend
-
+allclean: clean
+	@cd utils; make allclean
+	@cd clm1d; make allclean
+	@cd drv; make allclean
 
 
+#include $(SRCDIR)/Makefile.depend

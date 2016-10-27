@@ -1,6 +1,6 @@
 !#include <misc.h>
 
-subroutine clm1d_typini (ntiles, clm, istep_pf)
+subroutine clm1d_typini (ntiles, clm)
 
 !=========================================================================
 !
@@ -29,7 +29,6 @@ subroutine clm1d_typini (ntiles, clm, istep_pf)
 
   integer, intent(in)         :: ntiles     !number of tiles
   type (clm1d_type), intent(inout) :: clm(ntiles)
-  integer, intent(in)         :: istep_pf 
 
 !=== Local Variables =====================================================
 
@@ -49,7 +48,7 @@ subroutine clm1d_typini (ntiles, clm, istep_pf)
      clm(k)%londeg    = NaN      ! longitude (degrees)
      clm(k)%dtime     = NaN      ! model time step [second]
      clm(k)%dtime_old = NaN      ! previous model time step
-     clm(k)%istep     = istep_pf ! number of time step
+     clm(k)%istep     = NaN      ! number of time step
 
      ! leaf constants (read into 2-D grid module variables)
      clm(k)%dewmx     = NaN      ! Maximum allowed dew [mm]
@@ -296,26 +295,10 @@ subroutine clm1d_typini (ntiles, clm, istep_pf)
 
      ! overland flow
      clm(k)%frac              = NaN  ! fraction of water becoming surface runoff after some TOPMODEL approach
-     
+
+     ! reference temperature
+     clm(k)%soi_z             = NaN
   end do
 
 end subroutine clm1d_typini
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -102,7 +102,7 @@ module grid_type_module
 
 contains
   
-  function grid_create_2d(nrow, ncol, nt) result(grid)
+  function grid_create_2d(ncol, nrow, nt) result(grid)
     type(grid_type),pointer,dimension(:,:) :: grid
     integer, intent(in) :: nrow, ncol, nt
 
@@ -110,9 +110,9 @@ contains
     integer :: r,c
 
     allocate(grid(1:nrow,1:ncol))
-    do r=1,nrow
     do c=1,ncol
-       call grid_init(grid(r,c), nt)
+    do r=1,nrow
+       call grid_init(grid(c,r), nt)
     end do
     end do
   end function grid_create_2d

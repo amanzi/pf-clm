@@ -2,8 +2,8 @@ SRCDIR	      =	.
 OBJECT        = .
 
 
-#HOST_SOURCE   = clm_host_info_structured
-HOST_SOURCE   = clm_host_info_unstructured
+HOST_SOURCE   = clm_host_structured
+#HOST_SOURCE   = clm_host_unstructured
 
 default: all
 
@@ -12,8 +12,8 @@ FCFLAGS += -I $(CLM_UTILS_DIR) -I $(CLM_CLM1D_DIR) -I $(CLM_DRV_DIR)
 
 # Order is important due to .mod file creation
 OBJS = \
-	clm_type.o \
 	$(HOST_SOURCE).o \
+	clm_type.o \
 	clm_host_transfer.o
 #	clm.o
 

@@ -30,7 +30,6 @@ module clm1d_type_module
 
 ! time invariant variables
 
-     integer :: kpatch     ! patch index
      integer :: itypwat    ! water type
      logical :: lakpoi     ! true => lake point
      logical :: baresoil   ! true => bare soil  
@@ -324,22 +323,47 @@ module clm1d_type_module
 
 contains
 
-  function clm1d_create() result(clm1d)
+  function clm1d_create(surfind, soilind, snowind) result(clm1d)
+    use clm1d_varpar, only : nlevsoi, nlevsno
+    implicit none
+
     type(clm1d_type),pointer :: clm1d
+    integer, intent(in) :: surfind, soilind, snowind
+
     allocate(clm1d)
+    allocate(clm1d%diagsurf(1:surfind))
+    allocate(clm1d%diagsoil(1:soilind,1:nlevsoi))
+    allocate(clm1d%diagsnow(1:snowind,-nlevsno+1:0))
     return
   end function clm1d_create
 
-  function clm1d_create_n(n) result(clm1ds)
+  function clm1d_create_n(n, surfind, soilind, snowind) result(clm1ds)
+    use clm1d_varpar, only : nlevsoi, nlevsno
+    implicit none
+
     type(clm1d_type),pointer,dimension(:) :: clm1ds
     integer, intent(in) :: n
+    integer, intent(in) :: surfind, soilind, snowind
+
+    !local
+    integer :: t
 
     allocate(clm1ds(1:n))
+    do t=1,n
+       allocate(clm1ds(t)%diagsurf(1:surfind))
+       allocate(clm1ds(t)%diagsoil(1:soilind,1:nlevsoi))
+       allocate(clm1ds(t)%diagsnow(1:snowind,-nlevsno+1:0))
+    end do
+    call clm_typini(clm1ds, n)
     return
   end function clm1d_create_n
 
   subroutine clm1d_destroy(clm1d)
     type(clm1d_type) :: clm1d
+
+    if (associated(clm1d%diagsurf)) deallocate(clm1d%diagsurf)
+    if (associated(clm1d%diagsoil)) deallocate(clm1d%diagsoil)
+    if (associated(clm1d%diagsnow)) deallocate(clm1d%diagsnow)
     return
   end subroutine clm1d_destroy
   

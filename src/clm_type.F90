@@ -1,65 +1,73 @@
 module clm_type_module
+  use clm_precision, only : r8
   use drv_type_module, only : drv_type
   use io_type_module, only : io_type
   use tile_type_module, only : tile_type
   use grid_type_module, only : grid_type
   use clm1d_type_module, only : clm1d_type
+  use clm_host
   implicit none
   
   private
 
-  public :: clm_create, &
-       clm_init, &
+  public :: clm_init, &
+       clm_setup, &
+       clm_restart, &
+       clm_advance_time, &
        clm_destroy
 
   !
   ! basic class declaration for all clm data
   ! ----------------------------------------------------
   type, public:: clm_type
-     ! type for SAVE data from original subroutine
-     type (drv_type) :: drv
-     type (io_type) :: io
+     type(drv_type) :: drv
+     type(io_type) :: io
 
-     type (tile_type), pointer, dimension(:) :: tile
-     type (clm1d_type), pointer, dimension(:) :: clm
-     integer ntiles
+     type(tile_type), pointer, dimension(:) :: tile
+     type(clm1d_type), pointer, dimension(:) :: clm
+     integer :: ntiles
      
-     type (grid_type), pointer, dimension(:,:) :: grid
-     integer grid_nrows, grid_ncols
+     type(grid_type), pointer, dimension(:,:) :: grid
+     integer :: grid_nrows, grid_ncols
 
-     integer rank
+     integer :: rank
+
+     integer :: istep
+     real(r8) :: time
+     real(r8) :: dt
   end type clm_type
 
 contains
-
-  !
-  ! creates and allocates data structures
-  !------------------------------------------------------
-  function clm_create(rank) result(this)
-    type(clm_type),pointer:: this
-    integer :: rank
-
-    allocate(this)
-    call clm_init(this, rank)
-    return
-  end function clm_create
 
   
   !
   ! initializer, touches all memory
   !------------------------------------------------------
-  subroutine clm_init(this, rank)
+  subroutine clm_init(this, rank, ncols, nrows)
     type(clm_type) :: this
-    integer :: rank
+    integer,intent(in) :: rank
+    integer,intent(in) :: nrows,ncols
 
-    this%ntiles = -1
-    this%grid_nrows = -1
-    this%grid_ncols = -1
-    
+    ! set this data
+    this%ntiles = nrows * ncols
+    this%grid_nrows = nrows
+    this%grid_ncols = ncols
     this%rank = rank
+
+    this%istep = 0
+    this%dt = 0.
+    this%time = 0.
+
+    ! also set some drv data which replicates this data
     call drv_init(this%drv)
+    this%drv%nch = this%ntiles
+    this%drv%nr = this%grid_nrows
+    this%drv%nc = this%grid_ncols    
+
+    ! initialize io info
     call io_init(this%io, rank)
 
+    ! nullify for now, need extra arguments to create
     nullify(this%tile)
     nullify(this%clm)
     nullify(this%grid)
@@ -67,6 +75,93 @@ contains
     return
   end subroutine clm_init
 
+  !
+  ! setup, moves data around assuming all have been init'd
+  !------------------------------------------------------
+  subroutine clm_setup(this)
+    implicit none
+    type(clm_type) :: this
+
+    ! locals
+    integer :: t
+    do t=1,this%ntiles
+       this%clm(t)%istep = this%istep
+       call drv_g2clm(this%drv%udef, this%drv, this%grid, this%tile(t), this%clm(t))
+       call drv_clmini(this%drv, this%grid, this%tile(t), this%clm(t))
+    end do
+  end subroutine clm_setup
+
+  !
+  ! setter for time info
+  !------------------------------------------------------------------
+  subroutine clm_advance_time(this, host, istep, time, dt)
+    implicit none
+    type(clm_type) :: this
+    type(host_type),intent(in) :: host
+    integer,intent(in) :: istep
+    real(r8),intent(in) :: dt, time
+
+    ! locals
+    integer :: t
+    integer :: log_1dout
+    
+    ! set local time info for logging
+    this%istep = istep
+    this%time = time
+    this%dt = dt
+
+    ! set column time info for doing the work
+    this%clm(:)%dtime = dt
+
+    ! tick the driver (sets minutes, seconds, etc)
+    if (dt < 1) then ! FIXME --etc
+       write(*,*) "CLM cannot take timesteps of smaller than a second"
+       stop
+    end if
+       
+    this%drv%ts = nint(dt)
+    this%drv%endtime = 0
+    call drv_tick(this%drv)
+
+    ! advance the physics
+    do t=1,this%ntiles
+       if (host%planar_mask(t) == 1) then
+          call clm_main(this%clm(t), this%drv%day, this%drv%gmt)
+       end if
+    end do
+
+    ! write 1d output
+    if (this%io%output_1d == 1) then
+       if (this%io%ranked_log == 0) then
+          log_1dout = 0
+       else
+          log_1dout = 1
+       end if
+       call drv_1dout(this%drv, this%tile, this%clm, log_1dout)
+    end if
+
+  end subroutine clm_advance_time
+  
+
+  !
+  ! read or write a restart file
+  !
+  !  1 = read
+  !  2 = write
+  !------------------------------------------------------
+  subroutine clm_restart(rw, this, istep)
+    implicit none
+    type(clm_type) :: this
+    integer, intent(in) :: rw
+    integer, intent(in) :: istep
+
+    if (istep == -1) then
+       call drv_restart(rw, this%drv, this%tile, this%clm, this%rank, this%istep)
+    else
+       call drv_restart(rw, this%drv, this%tile, this%clm, this%rank, istep)
+    end if
+  end subroutine clm_restart
+  
   
   !
   ! destructor, cleans memory

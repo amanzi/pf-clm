@@ -1,7 +1,7 @@
-module clm_host
+module clm_host_transfer
   use clm_precision, only : r8
   use clm_infnan, only : invalid
-  use clm_host_info
+  use clm_host
   use clm_type_module 
   implicit none
 
@@ -23,6 +23,7 @@ module clm_host
        clm_to_host_total_energy_fluxes, &
        clm_to_host_mass_fluxes, &
        clm_to_host_total_mass_fluxes, &
+       clm_to_host_total_mass_fluxes_combined, &
        clm_to_host_diagnostics  
   
 contains
@@ -31,10 +32,10 @@ contains
   ! sets the node depths based on dz
   !
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_dz(info, dz_base, dz_mult, clm)
+  subroutine host_to_clm_dz(host, dz_base, dz_mult, clm)
     use clm1d_varpar, only : nlevsoi
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: dz_mult(info%ncells_g)  ! this oddity of having a scalar dz and a vector
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: dz_mult(host%ncells_g)  ! this oddity of having a scalar dz and a vector
     real(r8),intent(in) :: dz_base                 ! multiplier is thanks to ParFlow history, should
                                                    ! get removed eventually
     type(clm_type) :: clm
@@ -62,10 +63,10 @@ contains
           enddo
        else
        
-          if (info%planar_mask(t) == 1) then
+          if (host%planar_mask(t) == 1) then
              ! loop over CLM-active cells setting dz, zi
              do k = 1, nlevsoi
-                l = host_info_cell_index(info, i,j,k)
+                l = host_cell_index(host, i,j,k)
                 clm%clm(t)%dz(k) = dz_base * dz_mult(l)
                 clm%clm(t)%z(k) = clm%clm(t)%zi(k-1) + 0.5 * clm%clm(t)%dz(k)
                 clm%clm(t)%zi(k) = clm%clm(t)%zi(k-1) + clm%clm(t)%dz(k)
@@ -95,19 +96,19 @@ contains
   !
   ! Expected units: pressure [mm]
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_met_data(info, eflx_swin, eflx_lwin, precip, &
+  subroutine host_to_clm_met_data(host, eflx_swin, eflx_lwin, precip, &
        air_temp, air_spec_hum, wind_x, wind_y, patm, clm)
     use clm1d_varcon, only : tfrz, tcrit
     implicit none
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: eflx_swin(info%ncolumns_g) ! shortwave incoming radiation [W/m^2]
-    real(r8),intent(in) :: eflx_lwin(info%ncolumns_g) ! longwave incoming radiation [W/m^2]
-    real(r8),intent(in) :: precip(info%ncolumns_g) ! precipitation rate [mm/s]
-    real(r8),intent(in) :: air_temp(info%ncolumns_g) ! air temperature [K]
-    real(r8),intent(in) :: air_spec_hum(info%ncolumns_g) ! air specific humidity [kg/kg]
-    real(r8),intent(in) :: wind_x(info%ncolumns_g) ! wind speed, eastward direction [m/s]
-    real(r8),intent(in) :: wind_y(info%ncolumns_g) ! wind speed, northward direction [m/s]
-    real(r8),intent(in) :: patm(info%ncolumns_g) ! atmospheric pressure [Pa]
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: eflx_swin(host%ncolumns_g) ! shortwave incoming radiation [W/m^2]
+    real(r8),intent(in) :: eflx_lwin(host%ncolumns_g) ! longwave incoming radiation [W/m^2]
+    real(r8),intent(in) :: precip(host%ncolumns_g) ! precipitation rate [mm/s]
+    real(r8),intent(in) :: air_temp(host%ncolumns_g) ! air temperature [K]
+    real(r8),intent(in) :: air_spec_hum(host%ncolumns_g) ! air specific humidity [kg/kg]
+    real(r8),intent(in) :: wind_x(host%ncolumns_g) ! wind speed, eastward direction [m/s]
+    real(r8),intent(in) :: wind_y(host%ncolumns_g) ! wind speed, northward direction [m/s]
+    real(r8),intent(in) :: patm(host%ncolumns_g) ! atmospheric pressure [Pa]
     type(clm_type) :: clm
 
     ! locals
@@ -116,7 +117,7 @@ contains
     do t=1,clm%drv%nch
        i=clm%tile(t)%col
        j=clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
+       l = host_column_index(host, i,j)
 
        clm%clm(t)%forc_lwrad = eflx_lwin(l)
        clm%clm(t)%forc_t = air_temp(l)
@@ -158,13 +159,13 @@ contains
   !
   ! Expected units: pressure [mm]
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_forced_vegetation(info, lai, sai, z0m, displacement_ht, clm)
+  subroutine host_to_clm_forced_vegetation(host, lai, sai, z0m, displacement_ht, clm)
     implicit none
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: lai(info%ncolumns_g) ! exposed leaf area index [-]
-    real(r8),intent(in) :: sai(info%ncolumns_g) ! exposed stem area index [-]
-    real(r8),intent(in) :: z0m(info%ncolumns_g) ! aerodynamic roughness length [m]
-    real(r8),intent(in) :: displacement_ht(info%ncolumns_g) ! displacement height [m]
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: lai(host%ncolumns_g) ! exposed leaf area index [-]
+    real(r8),intent(in) :: sai(host%ncolumns_g) ! exposed stem area index [-]
+    real(r8),intent(in) :: z0m(host%ncolumns_g) ! aerodynamic roughness length [m]
+    real(r8),intent(in) :: displacement_ht(host%ncolumns_g) ! displacement height [m]
     type(clm_type) :: clm
 
     ! locals
@@ -173,7 +174,7 @@ contains
     do t=1,clm%drv%nch
        i=clm%tile(t)%col
        j=clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
+       l = host_column_index(host, i,j)
 
        clm%clm(t)%elai = lai(l)
        clm%clm(t)%esai = sai(l)
@@ -187,11 +188,11 @@ contains
   !
   ! Expected units: pressure [mm]
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_pressure(info, pressure, unit_conversion, clm)
+  subroutine host_to_clm_pressure(host, pressure, unit_conversion, clm)
     use clm1d_varpar, only : nlevsoi
     implicit none
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: pressure(info%ncells_g)
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: pressure(host%ncells_g)
     real(r8),intent(in) :: unit_conversion
     type(clm_type) :: clm
 
@@ -199,12 +200,12 @@ contains
     integer :: t,i,j,k,l
 
     do t=1,clm%drv%nch
-       if(info%planar_mask(t) == 1) then
+       if(host%planar_mask(t) == 1) then
           i=clm%tile(t)%col
           j=clm%tile(t)%row
 
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              clm%clm(t)%pf_press(k) = pressure(l) * unit_conversion
           end do
        end if
@@ -216,25 +217,25 @@ contains
   !
   ! Expected units: porosity [-], saturation [-]
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_wc(info, porosity, saturation, clm)
+  subroutine host_to_clm_wc(host, porosity, saturation, clm)
     use clm1d_varpar, only : nlevsoi
     use clm1d_varcon, only : denh2o
     implicit none
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: porosity(info%ncells_g)
-    real(r8),intent(in) :: saturation(info%ncells_g)
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: porosity(host%ncells_g)
+    real(r8),intent(in) :: saturation(host%ncells_g)
     type(clm_type) :: clm
 
     ! locals
     integer :: t,i,j,k,l
 
     do t=1,clm%drv%nch
-       if(info%planar_mask(t) == 1) then
+       if(host%planar_mask(t) == 1) then
           i=clm%tile(t)%col
           j=clm%tile(t)%row
 
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              clm%clm(t)%watsat(k) = porosity(l)
              clm%clm(t)%pf_vol_liq(k) = porosity(l) * saturation(l)
 
@@ -254,23 +255,23 @@ contains
   !
   ! Expected units: tksat [W/m-K]
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_tksat(info, tksat, clm)
+  subroutine host_to_clm_tksat(host, tksat, clm)
     use clm1d_varpar, only : nlevsoi
     implicit none
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: tksat(info%ncells_g)
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: tksat(host%ncells_g)
     type(clm_type) :: clm
 
     ! locals
     integer :: t,i,j,k,l
 
     do t=1,clm%drv%nch
-       if(info%planar_mask(t) == 1) then
+       if(host%planar_mask(t) == 1) then
           i=clm%tile(t)%col
           j=clm%tile(t)%row
 
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              clm%clm(t)%tksatu(k) = tksat(l)
           end do
        end if
@@ -284,23 +285,23 @@ contains
   !
   ! Expected units: porosity [-]
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_tksat_from_porosity(info, poro, clm)
+  subroutine host_to_clm_tksat_from_porosity(host, poro, clm)
     use clm1d_varpar, only : nlevsoi
     implicit none
-    type(host_info_type),intent(in) :: info
-    real(r8),intent(in) :: poro(info%ncells_g)
+    type(host_type),intent(in) :: host
+    real(r8),intent(in) :: poro(host%ncells_g)
     type(clm_type) :: clm
 
     ! locals
     integer :: t,i,j,k,l
 
     do t=1,clm%drv%nch
-       if(info%planar_mask(t) == 1) then
+       if(host%planar_mask(t) == 1) then
           i=clm%tile(t)%col
           j=clm%tile(t)%row
 
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              clm%clm(t)%tksatu(k) = clm%clm(t)%tkmg(k)*0.57**poro(l)
           end do
        end if
@@ -313,10 +314,10 @@ contains
   !
   ! Expected units: 
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_irrigation(info, irr_type, irr_cycle, &
+  subroutine host_to_clm_irrigation(host, irr_type, irr_cycle, &
        irr_rate, irr_start, irr_stop, irr_threshold, irr_thresholdtype, clm)
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
 
     ! irrigation keys
     integer, intent(in) :: irr_type            ! irrigation type flag (0=none,1=spray,2=drip,3=instant)
@@ -334,7 +335,7 @@ contains
     integer :: t,i,j
 
     do t=1,clm%drv%nch
-       if(info%planar_mask(t) == 1) then
+       if(host%planar_mask(t) == 1) then
           i=clm%tile(t)%col
           j=clm%tile(t)%row
 
@@ -355,10 +356,10 @@ contains
   !
   ! Expected units: 
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_et_controls(info, beta_type, veg_water_stress_type, wilting_point, &
+  subroutine host_to_clm_et_controls(host, beta_type, veg_water_stress_type, wilting_point, &
        field_capacity, res_sat, clm)
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
 
     ! ET controls
     integer, intent(in) :: beta_type              ! beta formulation for bare soil Evap 0=none, 1=linear, 2=cos
@@ -375,7 +376,7 @@ contains
     integer :: t,i,j
 
     do t=1,clm%drv%nch
-       if(info%planar_mask(t) == 1) then
+       if(host%planar_mask(t) == 1) then
           i=clm%tile(t)%col
           j=clm%tile(t)%row
 
@@ -395,14 +396,14 @@ contains
   !
   ! Expected units: all returned in W/m^2
   ! ------------------------------------------------------------------
-  subroutine clm_to_host_ground_energy_fluxes(info, clm, eflx_lh, eflx_sh, eflx_lwrad_out, eflx_soil)
+  subroutine clm_to_host_ground_energy_fluxes(host, clm, eflx_lh, eflx_sh, eflx_lwrad_out, eflx_soil)
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: eflx_lh(info%ncolumns_g)          ! latent heat flux [W/m^2]
-    real(r8),intent(inout) :: eflx_sh(info%ncolumns_g)          ! sensible heat from ground [W/m^2]
-    real(r8),intent(inout) :: eflx_lwrad_out(info%ncolumns_g)   ! outgoing long-wave radiation from ground [W/m^2]
-    real(r8),intent(inout) :: eflx_soil(info%ncolumns_g)        ! flux conducted to ground [W/m^2]
+    real(r8),intent(inout) :: eflx_lh(host%ncolumns_g)          ! latent heat flux [W/m^2]
+    real(r8),intent(inout) :: eflx_sh(host%ncolumns_g)          ! sensible heat from ground [W/m^2]
+    real(r8),intent(inout) :: eflx_lwrad_out(host%ncolumns_g)   ! outgoing long-wave radiation from ground [W/m^2]
+    real(r8),intent(inout) :: eflx_soil(host%ncolumns_g)        ! flux conducted to ground [W/m^2]
 
     ! local
     integer :: t,i,j,l
@@ -410,8 +411,8 @@ contains
     do t=1,clm%drv%nch
        i = clm%tile(t)%col
        j = clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
-       if (info%planar_mask(t) == 1) then
+       l = host_column_index(host, i,j)
+       if (host%planar_mask(t) == 1) then
           eflx_lh(l) = clm%clm(t)%eflx_lh_grnd
           eflx_sh(l) = clm%clm(t)%eflx_sh_grnd
           eflx_lwrad_out(l) = clm%clm(t)%eflx_lwrad_out
@@ -431,14 +432,14 @@ contains
   !
   ! Expected units: all returned in W/m^2
   ! ------------------------------------------------------------------
-  subroutine clm_to_host_total_energy_fluxes(info, clm, eflx_lh, eflx_sh, eflx_lwrad_out, eflx_soil)
+  subroutine clm_to_host_total_energy_fluxes(host, clm, eflx_lh, eflx_sh, eflx_lwrad_out, eflx_soil)
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: eflx_lh(info%ncolumns_g)          ! latent heat flux [W/m^2]
-    real(r8),intent(inout) :: eflx_sh(info%ncolumns_g)          ! sensible heat from ground [W/m^2]
-    real(r8),intent(inout) :: eflx_lwrad_out(info%ncolumns_g)   ! outgoing long-wave radiation from ground [W/m^2]
-    real(r8),intent(inout) :: eflx_soil(info%ncolumns_g)        ! flux conducted to ground [W/m^2]
+    real(r8),intent(inout) :: eflx_lh(host%ncolumns_g)          ! latent heat flux [W/m^2]
+    real(r8),intent(inout) :: eflx_sh(host%ncolumns_g)          ! sensible heat from ground [W/m^2]
+    real(r8),intent(inout) :: eflx_lwrad_out(host%ncolumns_g)   ! outgoing long-wave radiation from ground [W/m^2]
+    real(r8),intent(inout) :: eflx_soil(host%ncolumns_g)        ! flux conducted to ground [W/m^2]
 
     ! local
     integer :: t,i,j,l
@@ -446,8 +447,8 @@ contains
     do t=1,clm%drv%nch
        i = clm%tile(t)%col
        j = clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
-       if (info%planar_mask(t) == 1) then
+       l = host_column_index(host, i,j)
+       if (host%planar_mask(t) == 1) then
           eflx_lh(l) = clm%clm(t)%eflx_lh_tot
           eflx_sh(l) = clm%clm(t)%eflx_sh_tot
           eflx_lwrad_out(l) = clm%clm(t)%eflx_lwrad_out
@@ -468,23 +469,23 @@ contains
   !
   ! Expected units: all returned in [mm/s]
   ! ------------------------------------------------------------------
-  subroutine clm_to_host_mass_fluxes(info, clm, qflx_evap_tot, qflx_evap_ground, qflx_evap_soil, &
+  subroutine clm_to_host_mass_fluxes(host, clm, qflx_evap_tot, qflx_evap_ground, qflx_evap_soil, &
        qflx_evap_veg, qflx_tran_veg, qflx_infl, qflx_irr, qflx_irr_inst, irr_flag, qflx_tran_soil)
     use clm1d_varpar, only : nlevsoi
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: qflx_evap_tot(info%ncolumns_g)    ! total evaporation [mm/s]
-    real(r8),intent(inout) :: qflx_evap_ground(info%ncolumns_g) ! ground evaporation (does not
+    real(r8),intent(inout) :: qflx_evap_tot(host%ncolumns_g)    ! total evaporation [mm/s]
+    real(r8),intent(inout) :: qflx_evap_ground(host%ncolumns_g) ! ground evaporation (does not
                                                                 !  include snow sublimation) [mm/s]
-    real(r8),intent(inout) :: qflx_evap_soil(info%ncolumns_g)   ! soil evaporation [mm/s]
-    real(r8),intent(inout) :: qflx_evap_veg(info%ncolumns_g)    ! canopy evaporation [mm/s]
-    real(r8),intent(inout) :: qflx_tran_veg(info%ncolumns_g)    ! canopy transpiration [mm/s]
-    real(r8),intent(inout) :: qflx_infl(info%ncolumns_g)        ! net infiltration [mm/s]
-    real(r8),intent(inout) :: qflx_irr(info%ncolumns_g)         ! irrigation sources [mm/s]
-    real(r8),intent(inout) :: qflx_irr_inst(info%ncells_g)      ! instantaneous irrigation sources [mm/s]
-    real(r8),intent(inout) :: irr_flag(info%ncolumns_g)         ! flag for irrigation type
-    real(r8),intent(inout) :: qflx_tran_soil(info%ncells_g)     ! transpiration, distributed via roots [mm/s]
+    real(r8),intent(inout) :: qflx_evap_soil(host%ncolumns_g)   ! soil evaporation [mm/s]
+    real(r8),intent(inout) :: qflx_evap_veg(host%ncolumns_g)    ! canopy evaporation [mm/s]
+    real(r8),intent(inout) :: qflx_tran_veg(host%ncolumns_g)    ! canopy transpiration [mm/s]
+    real(r8),intent(inout) :: qflx_infl(host%ncolumns_g)        ! net infiltration [mm/s]
+    real(r8),intent(inout) :: qflx_irr(host%ncolumns_g)         ! irrigation sources [mm/s]
+    real(r8),intent(inout) :: qflx_irr_inst(host%ncells_g)      ! instantaneous irrigation sources [mm/s]
+    real(r8),intent(inout) :: irr_flag(host%ncolumns_g)         ! flag for irrigation type
+    real(r8),intent(inout) :: qflx_tran_soil(host%ncells_g)     ! transpiration, distributed via roots [mm/s]
 
     ! local
     integer :: t,i,j,k,l
@@ -492,8 +493,8 @@ contains
     do t=1,clm%drv%nch
        i = clm%tile(t)%col
        j = clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
-       if (info%planar_mask(t) == 1) then
+       l = host_column_index(host, i,j)
+       if (host%planar_mask(t) == 1) then
           qflx_evap_tot(l) = clm%clm(t)%qflx_evap_tot
           qflx_evap_ground(l) = clm%clm(t)%qflx_evap_grnd
           qflx_evap_soil(l) = clm%clm(t)%qflx_evap_soi
@@ -503,7 +504,7 @@ contains
           qflx_irr(l) = clm%clm(t)%qflx_qirr
           irr_flag(l) = clm%clm(t)%irr_flag
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              qflx_irr_inst(l) = clm%clm(t)%qflx_qirr_inst(k)
              qflx_tran_soil(l) = clm%clm(t)%qflx_tran_veg * clm%clm(t)%rootfr(k)
           end do
@@ -518,7 +519,7 @@ contains
           qflx_irr(l) = invalid
           irr_flag(l) = invalid
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              qflx_irr_inst(l) = invalid
              qflx_tran_soil(l) = invalid
           end do
@@ -534,13 +535,13 @@ contains
   !
   ! Expected units: all returned in [mm/s]
   ! ------------------------------------------------------------------
-  subroutine clm_to_host_total_mass_fluxes(info, clm, qflx_surface, qflx_subsurface)
+  subroutine clm_to_host_total_mass_fluxes(host, clm, qflx_surface, qflx_subsurface)
     use clm1d_varpar, only : nlevsoi
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: qflx_surface(info%ncolumns_g)  ! total mass flux to/from the surface [mm/s]
-    real(r8),intent(inout) :: qflx_subsurface(info%ncells_g) ! total mass flux to/from the subsurface [1/s]
+    real(r8),intent(inout) :: qflx_surface(host%ncolumns_g)  ! total mass flux to/from the surface [mm/s]
+    real(r8),intent(inout) :: qflx_subsurface(host%ncells_g) ! total mass flux to/from the subsurface [1/s]
 
     ! local
     integer :: t,i,j,k,l
@@ -548,11 +549,11 @@ contains
     do t=1,clm%drv%nch
        i = clm%tile(t)%col
        j = clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
-       if (info%planar_mask(t) == 1) then
+       l = host_column_index(host, i,j)
+       if (host%planar_mask(t) == 1) then
           qflx_surface(l) = clm%clm(t)%qflx_infl
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) + clm%clm(t)%qflx_qirr_inst(k))&
                   / clm%clm(t)%dz(k)
           end do
@@ -560,31 +561,28 @@ contains
        else
           qflx_surface(l) = 0.
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              qflx_subsurface(l) = 0.
           end do
 
        end if
     end do
   end subroutine clm_to_host_total_mass_fluxes
-  
+
 
   !
-  ! Gets surface energy balance total fluxes (canopy + ground)
+  ! Gets the aggregated mass fluxes -- this is what a host code should
+  ! feel as a source.  Puts the surface fluxes into the top cell of
+  ! the subsurface.
   !
-  ! Expected units: all returned in W/m^2
+  ! Expected units: all returned in [mm/s]
   ! ------------------------------------------------------------------
-  subroutine clm_to_host_diagnostics(info, clm, swe, snow_depth, canopy_storage, T_skin, T_veg, T_soil)
+  subroutine clm_to_host_total_mass_fluxes_combined(host, clm, qflx_subsurface)
     use clm1d_varpar, only : nlevsoi
     implicit none
-    type(host_info_type),intent(in) :: info
+    type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: swe(info%ncolumns_g) ! snow-water equivalent (mass) [kg/m^2]
-    real(r8),intent(inout) :: canopy_storage(info%ncolumns_g) ! canopy storage (mass) [kg/m^2]
-    real(r8),intent(inout) :: snow_depth(info%ncolumns_g)! snow depth [m]
-    real(r8),intent(inout) :: T_skin(info%ncolumns_g) ! skin temperature [K]
-    real(r8),intent(inout) :: T_veg(info%ncolumns_g) ! leaf temperature [K]
-    real(r8),intent(inout) :: T_soil(info%ncells_g)   ! soil temperature [K]
+    real(r8),intent(inout) :: qflx_subsurface(host%ncells_g) ! total mass flux to/from the subsurface [1/s]
 
     ! local
     integer :: t,i,j,k,l
@@ -592,15 +590,64 @@ contains
     do t=1,clm%drv%nch
        i = clm%tile(t)%col
        j = clm%tile(t)%row
-       l = host_info_column_index(info, i,j)
-       if (info%planar_mask(t) == 1) then
+       l = host_column_index(host, i,j)
+       if (host%planar_mask(t) == 1) then
+          do k = 1,nlevsoi
+             l = host_cell_index(host, i,j,k)
+             if (k == 1) then 
+                qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) &
+                     + clm%clm(t)%qflx_qirr_inst(k) + clm%clm(t)%qflx_infl) &
+                     / clm%clm(t)%dz(k)
+             else
+                qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) &
+                     + clm%clm(t)%qflx_qirr_inst(k)) &
+                     / clm%clm(t)%dz(k)
+             end if
+          end do
+
+       else
+          do k = 1,nlevsoi
+             l = host_cell_index(host, i,j,k)
+             qflx_subsurface(l) = 0.
+          end do
+
+       end if
+    end do
+  end subroutine clm_to_host_total_mass_fluxes_combined
+  
+
+  !
+  ! Gets surface energy balance total fluxes (canopy + ground)
+  !
+  ! Expected units: all returned in W/m^2
+  ! ------------------------------------------------------------------
+  subroutine clm_to_host_diagnostics(host, clm, swe, snow_depth, canopy_storage, T_skin, T_veg, T_soil)
+    use clm1d_varpar, only : nlevsoi
+    implicit none
+    type(host_type),intent(in) :: host
+    type(clm_type), intent(in) :: clm
+    real(r8),intent(inout) :: swe(host%ncolumns_g) ! snow-water equivalent (mass) [kg/m^2]
+    real(r8),intent(inout) :: canopy_storage(host%ncolumns_g) ! canopy storage (mass) [kg/m^2]
+    real(r8),intent(inout) :: snow_depth(host%ncolumns_g)! snow depth [m]
+    real(r8),intent(inout) :: T_skin(host%ncolumns_g) ! skin temperature [K]
+    real(r8),intent(inout) :: T_veg(host%ncolumns_g) ! leaf temperature [K]
+    real(r8),intent(inout) :: T_soil(host%ncells_g)   ! soil temperature [K]
+
+    ! local
+    integer :: t,i,j,k,l
+    
+    do t=1,clm%drv%nch
+       i = clm%tile(t)%col
+       j = clm%tile(t)%row
+       l = host_column_index(host, i,j)
+       if (host%planar_mask(t) == 1) then
           swe(l) = clm%clm(t)%h2osno
           snow_depth(l) = clm%clm(t)%snowdp
           canopy_storage(l) = clm%clm(t)%h2ocan
           T_skin(l) = clm%clm(t)%t_grnd
           T_veg(l) = clm%clm(t)%t_veg
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              T_soil(l) = clm%clm(t)%t_soisno(k)
           end do
        else
@@ -610,7 +657,7 @@ contains
           T_skin(l) = invalid
           T_veg(l) = invalid
           do k = 1,nlevsoi
-             l = host_info_cell_index(info, i,j,k)
+             l = host_cell_index(host, i,j,k)
              T_soil(l) = invalid
           end do
        end if          
@@ -618,4 +665,4 @@ contains
   end subroutine clm_to_host_diagnostics
 
 
-end module clm_host
+end module clm_host_transfer

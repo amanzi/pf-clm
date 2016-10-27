@@ -158,8 +158,6 @@ subroutine clm1d_main (clm,day,gmt)
   use clm_precision
   use clm1d_type_module
   use clm1d_varcon, only : istsoil
-!  use clm1d_varcon, only : tfrz, istsoil, istwet, istice, denice, denh2o
-  ! use clm1d_varpar, only : nlevsoi ! Stefan: added because of flux array that is passed
   implicit none
 
   ! ------------------- arguments -----------------------------------
@@ -195,6 +193,9 @@ subroutine clm1d_main (clm,day,gmt)
   ! -----------------------------------------------------------------
   ! Initial set of previous time step variables 
   ! -----------------------------------------------------------------
+  ! new additions? --etc
+  clm%qflx_infl_old       = clm%qflx_infl
+  clm%qflx_tran_veg_old   = clm%qflx_tran_veg
 
   clm%h2osno_old = clm%h2osno  ! snow mass at previous time step
   clm%h2ocan_old = clm%h2ocan  ! depth of water on foliage at previous time step

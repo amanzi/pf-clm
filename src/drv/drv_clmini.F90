@@ -4,7 +4,7 @@
 !NOTE: this hsould be fixed to accept the dz profile, and do it right the first time! --ETC
 !
 
-subroutine drv_clmini (drv, grid, tile, clm, istep_pf)
+subroutine drv_clmini (drv, grid, tile, clm)
 
 !=========================================================================
 !
@@ -69,7 +69,6 @@ subroutine drv_clmini (drv, grid, tile, clm, istep_pf)
   type (grid_type) :: grid(drv%nc,drv%nr)   
   type (tile_type) :: tile
   type (clm1d_type)   :: clm  
-  integer        :: istep_pf
 
 !=== Local Variables =====================================================
 
@@ -81,13 +80,6 @@ subroutine drv_clmini (drv, grid, tile, clm, istep_pf)
   real(r8) xksat
 
 !=== End Variable List ===================================================
-
-! ========================================================================
-! Initialize Time Parameters - additional init done in drv_tick 
-! ========================================================================
-
-  clm%istep = istep_pf
-  clm%dtime = drv%ts
 
 ! ========================================================================
 ! TIME CONSTANT [1]

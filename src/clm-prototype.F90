@@ -147,7 +147,7 @@ n
   character*100 :: RI
                                                                                                                                                         ! call host_create/setup
   save
-                                                                                                                                                        ! need to add call to open io/logs
+                                                                                                                                                        ! create io, call io_open
   !=== End Variable List ===================================================
 
   !=========================================================================
@@ -249,7 +249,7 @@ n
 
                                                                                                                                                        ! start of clm1d_create/init
      
-                                                                                                                                                       ! diagnostics setup?  can we move these somewhere
+                                                                                                                                                       ! 
      !=== Set clm diagnostic indices and allocate space
      clm%surfind = drv%surfind
      clm%soilind = drv%soilind
@@ -262,9 +262,16 @@ n
      end do
      !====================================================
      !NBE: Define the reference layer for the seasonal soi
-     clm%soi_z = soi_z                  ! Probably out of place
+     clm%soi_z = soi_z                  ! Probably out of place                                                                                         ! EXCEPT this needs done!
      if (clm_write_logs==1) write(999,*) "Check soi_z",clm%soi_z
-                                                                                                                                                        ! end diagnostics setup
+
+
+
+
+!!!!! WE IS HERE
+     
+
+     
 
      !=== Initialize clm derived type components
      if (clm_write_logs==1) write(999,*) "Call clm_typini"
@@ -282,7 +289,7 @@ n
      !=== Read in vegetation data and set tile information accordingly
      if (clm_write_logs==1) write(999,*) "Read in vegetation data and set tile information accordingly"
      call drv_readvegtf (drv, grid, tile, clm, nx, ny, ix, iy, gnx, gny, rank)                                                                          ! need this for now, reads a clm file for veg types.  should move this into a setter
-
+                                                                                                                                                        ! NOPE-- this needs to go now.  reads a global file on every rank.  make a setter
 
      !=== Transfer grid variables to tile space 
      if (clm_write_logs==1) write(999,*) "Transfer grid variables to tile space ", drv%nch
@@ -298,11 +305,10 @@ n
      !=== Initialize CLM and DIAG variables
      if (clm_write_logs==1) write(999,*) "Initialize CLM and DIAG variables"
      do t=1,drv%nch 
-        clm%kpatch = t
         call drv_clmini (drv, grid, tile(t), clm(t), istep_pf) !Initialize CLM Variables                                                                ! need this, sets up snow dz layers, lakes, etc
      enddo
 
-                                                                                                                                                        ! kill, call host_to_clm_dz
+                                                                                                                                                        ! kill, call host_to_clm_dz isntead
      !=== Initialize the CLM topography mask
      !    This is two components: 
      !    1) a x-y mask of 0 o 1 for active inactive and 
@@ -518,12 +524,12 @@ n
 	patm_pf,qatm_pf,lai_pf,sai_pf,z0m_pf,displa_pf,istep_pf,clm_forc_veg)
   !=== Actual time loop
   !    (loop over CLM tile space, call 1D CLM at each point)
-  do t = 1, drv%nch                                                                                                                                     ! need a clm1d::advance() ? start
-     clm(t)%qflx_infl_old       = clm(t)%qflx_infl
+  do t = 1, drv%nch                                                                                                                                     ! call main
+     clm(t)%qflx_infl_old       = clm(t)%qflx_infl                                                                                                      ! MOVED to main
      clm(t)%qflx_tran_veg_old   = clm(t)%qflx_tran_veg
      if (clm(t)%planar_mask == 1) then
         call clm_main (clm(t),drv%day,drv%gmt)                                                                                                          
-     else                                                                                                                                               ! need a clm1d::advance() ? end
+     else                                                                                                                                               ! 
      endif ! Planar mask
   enddo ! End of the space vector loop
                                                                                                                                                         

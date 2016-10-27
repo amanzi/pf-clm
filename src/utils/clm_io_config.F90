@@ -1,8 +1,9 @@
 !default configuration, change me at will
 module clm_io_config
-  use clm_precision, only : MAX_FILENAME_LENGTH
   implicit none
 
+  integer,parameter :: MAX_FILENAME_LENGTH = 100
+  
   character(LEN=50) :: ACCESS='stream'
   character(LEN=50) :: FORM='unformatted'
 

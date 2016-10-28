@@ -2,11 +2,11 @@ subroutine parflow_open_files (clm,drv,rank,ix,iy,ifstep,clm_output_dir,clm_outp
   use clm_precision
   use clm1d_type_module, only : clm1d_type
   use drv_type_module, only : drv_type
-!  use parflow_io_config
+  use clm_io_config, only : ACCESS,FORM
   implicit none
 
-  type(clm1d_type),intent(in) :: clm(drv%nch)
   type(drv_type),intent(in) :: drv              
+  type(clm1d_type),intent(in) :: clm(drv%nch)
   integer,intent(in) :: rank,ix,iy,ifstep  ! RMM added, to include time step for file name
   integer,intent(in) :: clm_output_dir_length  ! length of above character string, used in C-Fortran interop
   character(LEN=clm_output_dir_length),intent(in) :: clm_output_dir  ! character location subdir for all output

@@ -1,14 +1,16 @@
-subroutine parflow_check_mass_balance(drv,clm,tile,evap_trans,saturation,pressure,porosity,&
+subroutine parflow_check_mass_balance(host,drv,clm,tile,evap_trans,saturation,pressure,porosity,&
      nx,ny,nz,j_incr,k_incr,ip,istep_pf)
 
+  use clm_host, only : host_type
   use drv_type_module, only : drv_type
   use clm_precision, only : r8
   use clm1d_type_module, only : clm1d_type
   use tile_type_module, only : tile_type
-  use clm_varpar, only : nlevsoi
-  use clm_varcon, only : denh2o, denice, istwet, istice
+  use clm1d_varpar, only : nlevsoi
+  use clm1d_varcon, only : denh2o, denice, istwet, istice
   implicit none
 
+  type(host_type),intent(in) :: host
   type(drv_type),intent(inout) :: drv
   type(clm1d_type),intent(inout) :: clm(drv%nch)     ! CLM 1-D Module
   type(tile_type),intent(in) :: tile(drv%nch)
@@ -22,7 +24,7 @@ subroutine parflow_check_mass_balance(drv,clm,tile,evap_trans,saturation,pressur
   real(r8),intent(in) :: porosity((nx+2)*(ny+2)*(nz+2))
 
   ! locals  
-  integer :: i,j,k,l,t,ip
+  integer :: i,j,k,l,t
   real(r8) :: tot_infl_mm,tot_tran_veg_mm,tot_drain_mm !@ total mm of h2o from infiltration and transpiration
   real(r8) :: error !@ mass balance error over entire domain
 
@@ -41,7 +43,7 @@ subroutine parflow_check_mass_balance(drv,clm,tile,evap_trans,saturation,pressur
   do t=1,drv%nch   !@ Start: Loop over domain 
      i=tile(t)%col
      j=tile(t)%row
-     if (clm(t)%planar_mask == 1) then !@ do only if we are in active domain   
+     if (host%planar_mask(t) == 1) then !@ do only if we are in active domain   
 
         do l = 1, nlevsoi
            clm(t)%h2osoi_vol(l) = clm(t)%h2osoi_liq(l)/(clm(t)%dz(l)*denh2o) &
@@ -52,7 +54,7 @@ subroutine parflow_check_mass_balance(drv,clm,tile,evap_trans,saturation,pressur
         ! @sjk Here we add the total water mass of the layers below CLM soil layers from Parflow to close water balance
         ! @sjk We can use clm(1)%dz(1) because the grids are equidistant and congruent
         clm(t)%endwb=0.0d0 !@sjk only interested in wb below surface
-        do k = clm(t)%topo_mask(3), clm(t)%topo_mask(1) ! CLM loop over z, starting at bottom of pf domains topo_mask(3)
+        do k = host%topo_mask(t,3), host%topo_mask(t,1) ! CLM loop over z, starting at bottom of pf domains topo_mask(3)
 
            l = 1+i + j_incr*(j) + k_incr*(k)  ! updated indexing @RMM b/c we are looping from k3 to k1
 
@@ -65,7 +67,7 @@ subroutine parflow_check_mass_balance(drv,clm,tile,evap_trans,saturation,pressur
         enddo
 
         ! add height of ponded water at surface (ie pressure head at upper pf bddy if > 0) 	 
-        l = 1+i + j_incr*(j) + k_incr*(clm(t)%topo_mask(1))
+        l = 1+i + j_incr*(j) + k_incr*(host%topo_mask(t,1))
         if (pressure(l) > 0.d0 ) then
            clm(t)%endwb = clm(t)%endwb + pressure(l) * 1000.0d0
         endif
@@ -125,5 +127,5 @@ subroutine parflow_check_mass_balance(drv,clm,tile,evap_trans,saturation,pressur
   !@ Pass sat_flag to sat_flag_o
   ! drv%sat_flag_o = drv%sat_flag
 
-end subroutine pf_couple
+end subroutine parflow_check_mass_balance
 

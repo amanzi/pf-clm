@@ -1,6 +1,6 @@
 !#include <misc.h>
 
-subroutine drv_g2clm(u,drv,grid,tile,clm)
+subroutine drv_g2clm(drv,grid,tile,clm)
 
 !=========================================================================
 !
@@ -45,7 +45,7 @@ subroutine drv_g2clm(u,drv,grid,tile,clm)
 !===  to tile space  - for some aplications, the assumption
 !===  of spatially constant information across a grid for these
 !===  variables may be incorrect, and should be modified by the user.
-
+  u = drv%udef
   c=tile%col
   r=tile%row
 

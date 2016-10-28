@@ -9,6 +9,7 @@ module clm_host_transfer
 
   public :: &
 ! host_to_clm: setters
+       host_to_clm_ground_properties, &
        host_to_clm_dz, &
        host_to_clm_met_data, &
        host_to_clm_forced_vegetation, &
@@ -18,7 +19,7 @@ module clm_host_transfer
        host_to_clm_tksat_from_porosity, &
        host_to_clm_irrigation, &
        host_to_clm_et_controls, &
-! clm_to_host: getters
+  ! clm_to_host: getters
        clm_to_host_ground_energy_fluxes, &
        clm_to_host_total_energy_fluxes, &
        clm_to_host_mass_fluxes, &
@@ -48,6 +49,9 @@ contains
     !    array, computing zi (interface centroid) and z (cell
     !    centroid)
     ! -- Reset rooting fractions based on this dz
+
+    ! FIXME Should probably push these dz/z/zi onto a grid attribute,
+    ! and then in g2clm push to clm attributes? --etc
     do t = 1,clm%drv%nch
 
        i = clm%tile(t)%col
@@ -90,6 +94,49 @@ contains
     end do
   end subroutine host_to_clm_dz
   
+  !
+  ! Set soil properties
+  !
+  ! Expected units: all returned in W/m^2
+  ! ------------------------------------------------------------------
+  subroutine host_to_clm_ground_properties(host, clm, latlon, sand, clay, &
+       color_index, fractional_ground)
+    use clm1d_varpar, only : nlevsoi
+    implicit none
+    type(host_type),intent(in) :: host
+    type(clm_type), intent(inout) :: clm
+    real(r8),intent(in) :: latlon(host%ncolumns_g,2)    ! latitude,longitude [degrees]
+    real(r8),intent(in) :: sand(host%ncells_g)          ! percent sand FIXME: 0-1 or 0-100? --etc
+    real(r8),intent(in) :: clay(host%ncells_g)          ! percent clay FIXME: 0-1 or 0-100? --etc
+    integer,intent(in) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
+    real(r8),intent(in) :: fractional_ground(host%ncolumns_g,clm%drv%nt) ! fraction of land surface of type t
+
+    ! local
+    integer :: t,i,j,k,l,m
+    real(r8) :: rsum
+
+    ! push data into the grid
+    do t=1,clm%drv%nch
+       i = clm%tile(t)%col
+       j = clm%tile(t)%row
+       l = host_column_index(host, i,j)
+
+       clm%grid(i,j)%latdeg = latlon(l,1)
+       clm%grid(i,j)%londeg = latlon(l,2)
+       clm%grid(i,j)%isoicol = color_index(l)
+
+       do m = 1,clm%drv%nt
+          clm%grid(i,j)%fgrd(m) = fractional_ground(l,m)
+       end do
+
+       do k = 1,nlevsoi
+          l = host_cell_index(host, i,j,k)
+          clm%grid(i,j)%sand(k) = sand(l)
+          clm%grid(i,j)%clay(k) = clay(l)
+       end do
+    end do
+  end subroutine host_to_clm_ground_properties
+
   
   !
   ! Sets the Meterological data forcing from the host code
@@ -391,6 +438,7 @@ contains
   end subroutine host_to_clm_et_controls
 
 
+
   !
   ! Gets surface energy balance on the ground.
   !
@@ -426,6 +474,7 @@ contains
     end do
   end subroutine clm_to_host_ground_energy_fluxes
 
+  
 
   !
   ! Gets surface energy balance total fluxes (canopy + ground)

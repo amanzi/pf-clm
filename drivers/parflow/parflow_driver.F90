@@ -10,9 +10,13 @@ qirr_pf,qirr_inst_pf,irr_flag_pf,irr_thresholdtypepf,soi_z,clm_next,clm_write_lo
 clm_last_rst,clm_daily_rst)
 
   use clm_precision
+  use clm_io_config, only : MAX_FILENAME_LENGTH
   use clm_type_module
-  use clm_host_info
-
+  use clm_host
+  use clm1d_varpar, only : nlevsoi
+  use grid_type_module
+  use tile_type_module
+  use clm1d_type_module
   implicit none
 
   !=== interface variables =====================================================
@@ -37,7 +41,6 @@ clm_last_rst,clm_daily_rst)
   integer,intent(in)   :: rank                               ! processor rank, from ParFlow
 
   integer,intent(in)  :: clm_next                           ! NBE: Passing flag to sync outputs
-  integer,intent(in)  :: d_stp                              ! NBE: Dummy for CLM restart
   integer,intent(in)  :: clm_write_logs                     ! NBE: Enable/disable writing of the log files
   integer,intent(in)  :: clm_last_rst                       ! NBE: Write all the CLM restart files or just the last one
   integer,intent(in)  :: clm_daily_rst                      ! NBE: Write daily restart files or hourly
@@ -73,14 +76,14 @@ clm_last_rst,clm_daily_rst)
   real(r8),intent(inout) :: qirr_inst_pf((nx+2)*(ny+2)*(nlevsoi+2))! irrigation applied below ground -- 'instant' (3D)
 
   ! output keys
-  real(r8),intent(in) :: clm_dump_interval                  ! dump inteval for CLM output, passed from PF, always in interval of CLM timestep, not time
+  real(r8),intent(in) :: clm_dump_interval                  ! dump inteval for CLM output, passed from PF, always in interval of CLM timestep, not time   !FIXME bug -- should be integer --etc
   integer,intent(in)  :: clm_1d_out                         ! whether to dump 1d output 0=no, 1=yes
   integer,intent(in)  :: clm_forc_veg                       ! BH: whether vegetation (LAI, SAI, z0m, displa) is being forced 0=no, 1=yes
   integer,intent(in)  :: clm_output_dir_length              ! for output directory
   integer,intent(in)  :: clm_bin_output_dir                 ! output directory
   integer,intent(in)  :: write_CLM_binary                   ! whether to write CLM output as binary 
-  character (LEN=clm_output_dir_length),intent(in) :: clm_output_dir ! output dir locatio
-n
+  character(LEN=clm_output_dir_length),intent(in) :: clm_output_dir ! output dir location
+
   ! ET keys
   integer,intent(in)  :: beta_typepf                        ! beta formulation for bare soil Evap 0=none, 1=linear, 2=cos
   integer,intent(in)  :: veg_water_stress_typepf            ! veg transpiration water stress formulation 0=none, 1=press, 2=sm
@@ -100,11 +103,12 @@ n
   
   !=== local variables =====================================================
   type(clm_type),save :: clm            ! note use of SAVE to stay consistent with parflow "1 point of entry"
-  type(host_info_type),save :: host
+  type(host_type),save :: host
 
   character(len=MAX_FILENAME_LENGTH) :: output_dir
   real(r8) :: junk2d((nx+2)*(ny+2)*3)            ! placeholder junk data on a 2d surface
   real(r8) :: junk3d((nx+2)*(ny+2)*(nz+2))       ! placeholder junk data on a 3d surface
+  integer :: d_stp                              ! NBE: Dummy for CLM restart
   
   !=== begin code ============================================================
 
@@ -118,15 +122,15 @@ n
      call io_open(clm%io, output_dir, rank, clm_write_logs)
      clm%io%restart_last = clm_last_rst
      clm%io%restart_daily = clm_daily_rst
-     clm%io%dump_interval = clm_dump_interval
+     clm%io%dump_interval = clm_dump_interval 
      clm%io%dump_current = 0
      clm%io%output_1d = clm_1d_out
      clm%io%write_binaries = write_CLM_binary
   
      !--- initialize the host object, pushing grid info into it
-     call host_info_init(host, nx, ny, nz, mask)
-     if (clm%io%log) call host_write_to_log(clm%io%log)
-     if (clm%io%ranked_log) call host_write_to_log(clm%io%ranked_log)
+     call host_info_init(host, nx, ny, nz, topo)
+     if (clm%io%log /= 0) call host_write_to_log(host, clm%io%log)
+     if (clm%io%ranked_log /= 0) call host_write_to_log(host, clm%io%ranked_log)
 
      !--- initalize the clm master object's grid
      clm%grid => grid_create_2d(nx, ny, clm%drv%nt)
@@ -141,47 +145,50 @@ n
 
      !--- initialize the clm master objects tiles, 1d columns
      clm%tile => tile_create_n(clm%ntiles)
-     clm%clm1d => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
+     clm%clm => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
 
      !--- set up some clm1d options
      clm%istep = istep_pf
-     clm%clm1d%soi_z = soi_z
+     clm%clm%soi_z = soi_z
 
-     !--- start setup process, reading initial conditions/parameters, etc
-     ! set up tile properties, such as soil properties, percent area veg fractions, etc
-     call drv_readvegtf(clm%drv, clm%grid, clm%tile, clm%clm1d, ...) ! THIS MUST GO NOW --etc
+     !--- setup -- set dz, ground stuff which is then pushed out to clm1d and tiles in clm_setup
+     call parflow_readvegtf()
+     call host_to_clm_ground_classification()
      
      !--- setup -- transfers grid to tile/clm1d properties
      call clm_setup(clm)
 
-     !--- more setup, but with parflow values
-     call host_to_clm_dz(host, dz, pf_dz_mult, clm)
+     !--- setup -- set data, other parameters FIXME: move these above clm_setup if possible for cleanliness --etc
+     call host_to_clm_dz(host, pdz, pf_dz_mult, clm)
      call host_to_clm_et_controls(host, beta_typepf, veg_water_stress_typepf, wilting_pointpf, &
           field_capacitypf, res_satpf, clm)
      call host_to_clm_irrigation(host, irr_typepf, irr_cyclepf, irr_ratepf, irr_startpf, &
           irr_stoppf, irr_thresholdpf, irr_thresholdtypepf, clm)
-     call host_to_clm_wc(host, porosity_data, saturation_data, clm)
-     call host_to_clm_tksat_from_porosity(host, porosity_data, clm)
+     call host_to_clm_wc(host, porosity, saturation, clm)
+     call host_to_clm_tksat_from_porosity(host, porosity, clm)
+     if (clm_forc_veg == 1) then
+        call host_to_clm_forced_vegetation(host, lai_pf, sai_pf, z0m_pf, displa_pf, clm)
+     end if
 
      !--- potential clobber stuff with restart data
      call clm_restart(1, clm, -1)
      
   else
      !--- if not intial time, just open logfiles and set water data
-     call host_to_clm_wc(host, porosity_data, saturation_data, clm)
+     call host_to_clm_wc(host, porosity, saturation, clm)
   end if
 
   !--- set pressure, get forcing met data, get ready to take the step
-  call host_to_clm_pressure(host, pressure_data, 1000., clm) ! note unit conversion from m to mm
+  call host_to_clm_pressure(host, pressure, 1000., clm) ! note unit conversion from m to mm
   call host_to_clm_met_data(host, sw_pf, lw_pf, prcp_pf, tas_pf, qatm_pf, u_pf, v_pf, patm_pf, clm)
 
   !--- advance the time step
-  call clm_advance_time(clm, istep_pf, time*3600, dt*3600) ! note unit conversion from hrs to seconds
+  call clm_advance_time(clm, host, istep_pf, time*3600, dt*3600) ! note unit conversion from hrs to seconds
   
   !--- potentially write 2d output
-  if ((this%io%dump_current == 1) .or. &
-       (mod(dble(this%istep), this%io%dump_interval) == 0)) then
-     if (this%io%write_binaries /= 0) then
+  if ((clm%io%dump_current == 1) .or. &
+       (mod(clm%istep, clm%io%dump_interval) == 0)) then
+     if (clm%io%write_binaries /= 0) then
         ! Call subroutine to open (2D-) output files
         call parflow_open_files(clm%clm, clm%drv,clm%rank, ix,iy,istep_pf,clm_output_dir, &
              clm_output_dir_length,clm_bin_output_dir) 
@@ -231,10 +238,10 @@ n
 
   !--- perform mass balance check
   call parflow_check_mass_balance(clm%drv, clm%clm, clm%tile, evap_trans, &
-       saturation_data, pressure_data, porosity_data, nx,ny,nz,j_incr,k_incr,ip,istep_pf)
+       saturation, pressure, porosity, nx,ny,nz,host%j_incr,host%k_incr,ip,istep_pf)
 
   !--- write spatially-averaged BCs and ICs to file for diagnostics
-  if (clm_wrte_logs == 1) then
+  if (clm_write_logs == 1) then
      if (istep_pf == 1) call drv_pout(clm%drv, clm%tile, clm%clm, rank)
   end if
 

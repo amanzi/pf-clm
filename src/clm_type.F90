@@ -84,9 +84,11 @@ contains
 
     ! locals
     integer :: t
+
+    call drv_g2tile(this%drv, this%grid, this%tile, this%clm)
     do t=1,this%ntiles
        this%clm(t)%istep = this%istep
-       call drv_g2clm(this%drv%udef, this%drv, this%grid, this%tile(t), this%clm(t))
+       call drv_g2clm(this%drv, this%grid, this%tile(t), this%clm(t))
        call drv_clmini(this%drv, this%grid, this%tile(t), this%clm(t))
     end do
   end subroutine clm_setup

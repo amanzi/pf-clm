@@ -109,6 +109,12 @@ clm_last_rst,clm_daily_rst)
   real(r8) :: junk2d((nx+2)*(ny+2)*3)            ! placeholder junk data on a 2d surface
   real(r8) :: junk3d((nx+2)*(ny+2)*(nz+2))       ! placeholder junk data on a 3d surface
   integer :: d_stp                              ! NBE: Dummy for CLM restart
+
+  real(r8) :: latlon((nx+2)*(ny+2)*3,2)    ! latitude,longitude [degrees]
+  real(r8) :: sand((nx+2)*(ny+2)*(nz+2))          ! percent sand FIXME: 0-1 or 0-100? --etc
+  real(r8) :: clay((nx+2)*(ny+2)*(nz+2))          ! percent clay FIXME: 0-1 or 0-100? --etc
+  integer :: color_index((nx+2)*(ny+2)*3)  ! color index FIXME: document! --etc
+  real(r8) :: fractional_ground((nx+2)*(ny+2)*3, 18) ! fraction of land surface of type t
   
   !=== begin code ============================================================
 
@@ -152,8 +158,9 @@ clm_last_rst,clm_daily_rst)
      clm%clm%soi_z = soi_z
 
      !--- setup -- set dz, ground stuff which is then pushed out to clm1d and tiles in clm_setup
-     call parflow_readvegtf()
-     call host_to_clm_ground_classification()
+     call parflow_read_ground(host, clm%drv, ix,iy, gnx,gny, latlon, sand,clay, &
+          color_index, fractional_ground)
+     call host_to_clm_ground_properties(host, clm, latlon, sand, clay, color_index, fractional_ground)
      
      !--- setup -- transfers grid to tile/clm1d properties
      call clm_setup(clm)

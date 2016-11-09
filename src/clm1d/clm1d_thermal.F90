@@ -292,7 +292,6 @@ subroutine clm1d_thermal (clm)
   if (clm%h2osoi_liq(clm%snl+1) <= 0. .AND. clm%h2osoi_ice(clm%snl+1) > 0.) htvp = hsub
 
   ! Roughness length
-  write(*,*) "zom = ", clm%z0m
   if (clm%frac_sno > 0.) then
      z0mg = clm%zsno
      z0hg = z0mg            ! initial set

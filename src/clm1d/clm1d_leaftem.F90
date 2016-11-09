@@ -285,7 +285,6 @@ subroutine clm1d_leaftem (z0mv,       z0hv,       z0qv,           &
      raw(1)=1./(temp2*ustar) 
 
 ! Bulk boundary layer resistance of leaves
-     write(*,*) "rb = ", clm%dleaf, ustar, um
      uaf = um*sqrt( 1./(ram(1)*um) )
      cf = 0.01/(sqrt(uaf)*sqrt(clm%dleaf))
      rb = 1./(cf*uaf)
@@ -341,7 +340,6 @@ subroutine clm1d_leaftem (z0mv,       z0hv,       z0qv,           &
      efpot = clm%forc_rho*wtl*(qsatl-qaf)
 
      if (efpot > 0. .AND. clm%btran > 0.) then
-        write(*,*) "tran veg: ", efpot, rppdry
         clm%qflx_tran_veg = efpot*rppdry
         rpp = rppdry + clm%fwet
         epss = 1.e-10

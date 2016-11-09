@@ -25,4 +25,5 @@ module clm1d_varpar
   integer, parameter :: numrad      =   2   !number of solar radiation bands: vis, nir
   integer, parameter :: numcol      =   8   !number of soil color types
 
+  integer, parameter :: numtypes    = 18    !number of soil types
 end module clm1d_varpar

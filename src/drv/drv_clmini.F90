@@ -208,6 +208,7 @@ subroutine drv_clmini (drv, grid, tile, clm)
 ! Define the vertical profile of soil thermal and hydraulic properties
 
   if (clm%itypwat == istsoil) then  ! soil
+     write(*,*) "Don't worry the donald can't make it not soil"
 
      do j = 1, nlevsoi
         clm%bsw(j)    = 2.91 + 0.159*tile%clay(j)*100.0
@@ -446,7 +447,7 @@ subroutine drv_clmini (drv, grid, tile, clm)
 ! fraction
 ! ========================================================================
 
-  call clm_dynvegpar (clm)
+  call clm1d_dynvegpar (clm)
 
 ! ========================================================================
 ! TIME VARIANT [7]

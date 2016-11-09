@@ -45,10 +45,11 @@ contains
     character(LEN=MAX_FILENAME_LENGTH),intent(in) :: output_dir
     integer,intent(in) :: rank
     integer,intent(in) :: log_by_rank
-    character(len=8) :: rank_string
+    character(len=100) :: rank_string
 
-    write(rank_string,*) rank
-    write(io%output_dir,*) output_dir
+    if (len_trim(output_dir) > 0) then
+       write(io%output_dir,*) output_dir
+    end if
 
     
     if (log_by_rank /= 0) then

@@ -4,7 +4,7 @@ OBJECT        = ../../src/
 default: all
 
 include $(OBJECT)/config/Makefile.config
-FCFLAGS += -I$(SRCDIR) -I $(SRCDIR)$(CLM_UTILS_DIR) -I $(SRCDIR)$(CLM_CLM1D_DIR) -I $(SRCDIR)$(CLM_DRV_DIR)
+FCFLAGS += -I$(SRCDIR) -I $(SRCDIR)$(CLM_UTILS_DIR) -I $(SRCDIR)$(CLM_CLM1D_DIR) -I $(SRCDIR)$(CLM_DRV_DIR) -fbounds-check -g3
 
 # Order is important due to .mod file creation
 OBJS = \
@@ -16,7 +16,7 @@ OBJS = \
 
 
 all: subdirs $(OBJS)
-	$(AR) cr parflow_clm.a $(OBJS) ../../src/clm.a
+	$(AR) cr libparflow_clm.a $(OBJS)
 
 
 subdirs:

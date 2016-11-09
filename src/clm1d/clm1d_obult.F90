@@ -72,15 +72,19 @@ subroutine clm1d_obult (displa,  z0m,      z0h,    z0q,    obu,  &
      ustar=vkc*um/(log(-zetam*obu/z0m)- &
           clm1d_psi(1,-zetam) +clm1d_psi(1,z0m/obu) &
           +1.14*((-zeta)**0.333-(zetam)**0.333))
+     write(*,*) "ustar1:", vkc, zetam, obu, z0m, clm1d_psi(1,-zetam), clm1d_psi(1,z0m/obu)
   else if (zeta < 0.) then         ! -1 <= zeta < 0
      ustar=vkc*um/(log(zldis/z0m)- &
           clm1d_psi(1,zeta)+clm1d_psi(1,z0m/obu))
+     write(*,*) "ustar2:", vkc, zldis, z0m, clm1d_psi(1,zeta), clm1d_psi(1,z0m/obu)
   else if (zeta <= 1.) then        !  0 <= ztea <= 1
      ustar=vkc*um/(log(zldis/z0m) + &
           5.*zeta -5.*z0m/obu)
+     write(*,*) "ustar3:", vkc, zldis, z0m, zeta
   else                             !  1 < zeta, phi=5+zeta
      ustar=vkc*um/(log(obu/z0m)+5.-5.*z0m/obu &
           +(5.*log(zeta)+zeta-1.))
+     write(*,*) "ustar4:", vkc, obu, z0m, zeta
   endif
 
 ! Temperature profile

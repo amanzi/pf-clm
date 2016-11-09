@@ -49,19 +49,34 @@ subroutine drv_2dout (drv, grid, clm)
      do j=1, drv%nr
         do i=1,drv%nc
            if (k==1) then
-              write(1995) clm(grid(i,j)%tilei)%qflx_top_soil
-              write(1996) clm(grid(i,j)%tilei)%qflx_infl
-              write(1997) clm(grid(i,j)%tilei)%qflx_evap_grnd
-              write(1998) clm(grid(i,j)%tilei)%eflx_soil_grnd
-              write(1999) clm(grid(i,j)%tilei)%qflx_evap_veg
-              write(2000) clm(grid(i,j)%tilei)%eflx_sh_tot
-              write(2001) clm(grid(i,j)%tilei)%eflx_lh_tot
-              write(2002) clm(grid(i,j)%tilei)%qflx_evap_tot
-              write(2003) clm(grid(i,j)%tilei)%t_grnd
-              write(2004) clm(grid(i,j)%tilei)%qflx_evap_soi
-              write(2005) clm(grid(i,j)%tilei)%qflx_tran_veg
-              write(2006) clm(grid(i,j)%tilei)%eflx_lwrad_out
-              write(2007) clm(grid(i,j)%tilei)%h2osno  !MHD/RMM
+              ! write(1995) clm(grid(i,j)%tilei)%qflx_top_soil
+              ! write(1996) clm(grid(i,j)%tilei)%qflx_infl
+              ! write(1997) clm(grid(i,j)%tilei)%qflx_evap_grnd
+              ! write(1998) clm(grid(i,j)%tilei)%eflx_soil_grnd
+              ! write(1999) clm(grid(i,j)%tilei)%qflx_evap_veg
+              ! write(2000) clm(grid(i,j)%tilei)%eflx_sh_tot
+              ! write(2001) clm(grid(i,j)%tilei)%eflx_lh_tot
+              ! write(2002) clm(grid(i,j)%tilei)%qflx_evap_tot
+              ! write(2003) clm(grid(i,j)%tilei)%t_grnd
+              ! write(2004) clm(grid(i,j)%tilei)%qflx_evap_soi
+              ! write(2005) clm(grid(i,j)%tilei)%qflx_tran_veg
+              ! write(2006) clm(grid(i,j)%tilei)%eflx_lwrad_out
+              ! write(2007) clm(grid(i,j)%tilei)%h2osno  !MHD/RMM
+
+
+              write(1995,*) clm(grid(i,j)%tilei)%qflx_top_soil
+              write(1996,*) clm(grid(i,j)%tilei)%qflx_infl
+              write(1997,*) clm(grid(i,j)%tilei)%qflx_evap_grnd
+              write(1998,*) clm(grid(i,j)%tilei)%eflx_soil_grnd
+              write(1999,*) clm(grid(i,j)%tilei)%qflx_evap_veg
+              write(2000,*) clm(grid(i,j)%tilei)%eflx_sh_tot
+              write(2001,*) clm(grid(i,j)%tilei)%eflx_lh_tot
+              write(2002,*) clm(grid(i,j)%tilei)%qflx_evap_tot
+              write(2003,*) clm(grid(i,j)%tilei)%t_grnd
+              write(2004,*) clm(grid(i,j)%tilei)%qflx_evap_soi
+              write(2005,*) clm(grid(i,j)%tilei)%qflx_tran_veg
+              write(2006,*) clm(grid(i,j)%tilei)%eflx_lwrad_out
+              write(2007,*) clm(grid(i,j)%tilei)%h2osno  !MHD/RMM
            endif
            write(2009) clm(grid(i,j)%tilei)%t_soisno(k)
         enddo

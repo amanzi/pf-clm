@@ -1,4 +1,4 @@
-subroutine drv_g2tile(drv,grid,tile,clm)
+subroutine drv_g2tile(drv,grid,tile,clm,ntiles)
 
   !=========================================================================
   !
@@ -26,10 +26,10 @@ subroutine drv_g2tile(drv,grid,tile,clm)
   implicit none
 
   !=== Arguments ===========================================================
-
+  integer,intent(in) :: ntiles
   type (drv_type)  :: drv              
-  type (tile_type) :: tile(drv%nch)
-  type (clm1d_type)   :: clm (drv%nch)
+  type (tile_type) :: tile(ntiles)
+  type (clm1d_type)   :: clm (ntiles)
   type (grid_type) :: grid(drv%nc,drv%nr)   
 
   !=== Local Variables =====================================================
@@ -40,7 +40,6 @@ subroutine drv_g2tile(drv,grid,tile,clm)
   real(r8) :: max           !Temporary vegetation processing variable
 
   !=== End Variable Definition =============================================
-
   do r=1,drv%nr     !rows
      do c=1,drv%nc  !columns
         rsum=0.0
@@ -62,13 +61,13 @@ subroutine drv_g2tile(drv,grid,tile,clm)
 
         rsum=0.0
         do t=1,drv%nt
-           if (grid(c,r)%fgrd(t).lt.drv%mina)grid(c,r)%fgrd(t)=0.0    ! impose area percent cutoff
-           rsum=rsum+grid(c,r)%fgrd(t)
+           if (grid(c,r)%fgrd(t).lt.drv%mina) grid(c,r)%fgrd(t) = 0.0    ! impose area percent cutoff
+           rsum = rsum + grid(c,r)%fgrd(t)
         enddo
 
         if (rsum.gt.0.0) then ! Renormalize veg fractions within a grid to 1  
            do t=1,drv%nt      ! Renormalize SUMT back to 1.0
-              if (rsum > 0.0) grid(c,r)%fgrd(t) = grid(c,r)%fgrd(t)/rsum
+              grid(c,r)%fgrd(t) = grid(c,r)%fgrd(t) / rsum
            enddo
         endif
 
@@ -115,8 +114,7 @@ subroutine drv_g2tile(drv,grid,tile,clm)
            if (grid(c,r)%pveg(t).lt.1) then
               grid(c,r)%fgrd(t)=0.0    
               grid(c,r)%pveg(t)=0  
-           endif
-           if (grid(c,r)%pveg(t)>drv%maxt) then
+           else if (grid(c,r)%pveg(t)>drv%maxt) then
               grid(c,r)%fgrd(t)=0.0              ! impose maxt cutoff
               grid(c,r)%pveg(t)=0  
            endif
@@ -125,7 +123,7 @@ subroutine drv_g2tile(drv,grid,tile,clm)
 
         if (rsum > 0.0) then   ! Renormalize veg fractions within a grid to 1
            do t=1,drv%nt       ! Renormalize SUMT back to 1.0
-              if (rsum > 0.0)grid(c,r)%fgrd(t)=grid(c,r)%fgrd(t)/rsum
+              grid(c,r)%fgrd(t) = grid(c,r)%fgrd(t) / rsum
            enddo
         endif
 
@@ -133,6 +131,12 @@ subroutine drv_g2tile(drv,grid,tile,clm)
   enddo
 
   !=== Make Tile Space
+  ! FIXME: this is rather bad.  There are at least two ways to mask tiles:
+  !  1. through no land (i.e. tile%fgrnd == 0)
+  !  2. through planar_mask (i.e. no valid cells)
+  ! We allocate nrow * ncol tiles, but then only use ones that satisfy
+  ! the above.  Should really only allocate and loop over actual used
+  ! tiles. --etc
 
   drv%nch=0
   do t=1,drv%nt                                              !loop through each tile type
@@ -159,7 +163,6 @@ subroutine drv_g2tile(drv,grid,tile,clm)
         enddo
      enddo
   enddo
-
   return
 
 end subroutine drv_g2tile

@@ -71,6 +71,9 @@ contains
     !      (1)= top of LS/PF domain 
     !      (2)= top-nlevsoi and 
     !      (3)= the bottom of the LS/PF domain.
+    host%topo_mask(:,:) = 0
+    host%planar_mask(:) = 0
+
     col_id = 0
     do j=1,host%ny
        do i=1,host%nx
@@ -122,7 +125,7 @@ contains
 
     ! local
     integer :: col_id
-    col_id = i + j * host%ny    
+    col_id = i + (j-1) * host%ny    
     l = 1+i + host%j_incr*j + host%k_incr*(host%topo_mask(col_id,1)-(k-1))
   end function host_cell_index
 

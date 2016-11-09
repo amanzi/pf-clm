@@ -354,7 +354,7 @@ contains
        allocate(clm1ds(t)%diagsoil(1:soilind,1:nlevsoi))
        allocate(clm1ds(t)%diagsnow(1:snowind,-nlevsno+1:0))
     end do
-    call clm_typini(clm1ds, n)
+    call clm1d_typini(clm1ds, n)
     return
   end function clm1d_create_n
 

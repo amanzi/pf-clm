@@ -8,7 +8,7 @@ HOST_SOURCE   = clm_host_structured
 default: all
 
 include $(OBJECT)/config/Makefile.config
-FCFLAGS += -I $(CLM_UTILS_DIR) -I $(CLM_CLM1D_DIR) -I $(CLM_DRV_DIR)
+FCFLAGS += -I $(CLM_UTILS_DIR) -I $(CLM_CLM1D_DIR) -I $(CLM_DRV_DIR) -fbounds-check -g3
 
 # Order is important due to .mod file creation
 OBJS = \
@@ -77,7 +77,7 @@ OBJS = \
 	clm_host_transfer.o
 
 all: $(OBJS)
-	$(AR) cr clm.a $(OBJS)
+	$(AR) cr libclm.a $(OBJS)
 
 clean:
 	@$(CLM_CLEAN)

@@ -80,7 +80,7 @@ subroutine parflow_check_mass_balance(host,drv,clm,tile,evap_trans,saturation,pr
         ! Determine wetland and land ice hydrology (must be placed here since need snow 
         ! updated from clm_combin) and ending water balance
         !@sjk Does my new way of doing the wb influence this?! 05/26/2004
-        if (clm(t)%itypwat==istwet .or. clm(t)%itypwat==istice) call clm_hydro_wetice (clm(t))
+        if (clm(t)%itypwat==istwet .or. clm(t)%itypwat==istice) call clm1d_hydro_wetice (clm(t))
 
         ! -----------------------------------------------------------------
         ! Energy AND Water balance for lake points
@@ -106,7 +106,7 @@ subroutine parflow_check_mass_balance(host,drv,clm,tile,evap_trans,saturation,pr
         ! -----------------------------------------------------------------
 
         !call clm_balchk (clm(t), clm(t)%istep) !@ Stefan: in terms of wb, this call is obsolete;
-        call clm_balchk (clm(t), istep_pf) !@ Stefan: in terms of wb, this call is obsolete;
+        call clm1d_balchk (clm(t), istep_pf) !@ Stefan: in terms of wb, this call is obsolete;
         !@ energy balances are still calculated
 
      endif !@ mask statement

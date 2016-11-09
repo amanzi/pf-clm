@@ -13,10 +13,12 @@ clm_last_rst,clm_daily_rst)
   use clm_io_config, only : MAX_FILENAME_LENGTH
   use clm_type_module
   use clm_host
+  use clm_host_transfer
   use clm1d_varpar, only : nlevsoi
   use grid_type_module
   use tile_type_module
   use clm1d_type_module
+  use io_type_module
   implicit none
 
   !=== interface variables =====================================================
@@ -71,7 +73,7 @@ clm_last_rst,clm_daily_rst)
   real(r8),intent(in) :: sai_pf((nx+2)*(ny+2)*3)            ! BH: sai, passed from PF
   real(r8),intent(in) :: z0m_pf((nx+2)*(ny+2)*3)            ! BH: z0m, passed from PF
   real(r8),intent(in) :: displa_pf((nx+2)*(ny+2)*3)         ! BH: displacement height, passed from PF
-  real(r8),intent(in) :: irr_flag_pf((nx+2)*(ny+2)*3)       ! irrigation flag for deficit-based scheduling -- 1 = irrigate, 0 = no-irrigate
+  real(r8),intent(inout) :: irr_flag_pf((nx+2)*(ny+2)*3)       ! irrigation flag for deficit-based scheduling -- 1 = irrigate, 0 = no-irrigate
   real(r8),intent(inout) :: qirr_pf((nx+2)*(ny+2)*3)           ! irrigation applied above ground -- spray or drip (2D)
   real(r8),intent(inout) :: qirr_inst_pf((nx+2)*(ny+2)*(nlevsoi+2))! irrigation applied below ground -- 'instant' (3D)
 
@@ -107,6 +109,8 @@ clm_last_rst,clm_daily_rst)
 
   character(len=MAX_FILENAME_LENGTH) :: output_dir
   real(r8) :: junk2d((nx+2)*(ny+2)*3)            ! placeholder junk data on a 2d surface
+  real(r8) :: junk2d2((nx+2)*(ny+2)*3)            ! placeholder junk data on a 2d surface
+  real(r8) :: junk2d3((nx+2)*(ny+2)*3)            ! placeholder junk data on a 2d surface
   real(r8) :: junk3d((nx+2)*(ny+2)*(nz+2))       ! placeholder junk data on a 3d surface
   integer :: d_stp                              ! NBE: Dummy for CLM restart
 
@@ -121,49 +125,49 @@ clm_last_rst,clm_daily_rst)
   if (time == start_time) then
   
      !--- initialize the clm master object
-     call clm_init(clm, rank, nx, ny)
+     call clm_init(clm, rank, nx, ny, 18)
 
      !--- open log files, set up io options
+     write(*,*) clm_output_dir
      write(output_dir,*) trim(adjustl(clm_output_dir))
+     write(*,*) output_dir
      call io_open(clm%io, output_dir, rank, clm_write_logs)
      clm%io%restart_last = clm_last_rst
      clm%io%restart_daily = clm_daily_rst
-     clm%io%dump_interval = clm_dump_interval 
+     write(*,*) "clm dump interval = ", clm_dump_interval
+     clm%io%dump_interval = 1 !clm_dump_interval
      clm%io%dump_current = 0
      clm%io%output_1d = clm_1d_out
      clm%io%write_binaries = write_CLM_binary
   
      !--- initialize the host object, pushing grid info into it
-     call host_info_init(host, nx, ny, nz, topo)
+     call host_init(host, nx, ny, nz, topo)
      if (clm%io%log /= 0) call host_write_to_log(host, clm%io%log)
      if (clm%io%ranked_log /= 0) call host_write_to_log(host, clm%io%ranked_log)
-
-     !--- initalize the clm master object's grid
-     clm%grid => grid_create_2d(nx, ny, clm%drv%nt)
 
      !--- read clm input files, data
      ! FIXME -- can we remove this and use a setter? --etc
      ! FIXME -- fix io to not pass clm_write_logs, instead iounit --etc
      call drv_readclmin(clm%drv, clm%grid, rank, clm_write_logs)
 
+     clm%clm => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
      if (clm%drv%startcode == 0) stop
      if (clm%drv%clm_ic == 0) stop
-
-     !--- initialize the clm master objects tiles, 1d columns
-     clm%tile => tile_create_n(clm%ntiles)
-     clm%clm => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
-
-     !--- set up some clm1d options
-     clm%istep = istep_pf
-     clm%clm%soi_z = soi_z
-
+     
      !--- setup -- set dz, ground stuff which is then pushed out to clm1d and tiles in clm_setup
      call parflow_read_ground(host, clm%drv, ix,iy, gnx,gny, latlon, sand,clay, &
           color_index, fractional_ground)
      call host_to_clm_ground_properties(host, clm, latlon, sand, clay, color_index, fractional_ground)
-     
-     !--- setup -- transfers grid to tile/clm1d properties
-     call clm_setup(clm)
+
+     !--- setup: fills tile space
+     call clm_setup_begin(clm)
+
+     !--- initialize the clm master objects tiles, 1d columns
+
+
+     !--- set up some clm1d options
+     clm%istep = istep_pf
+     clm%clm%soi_z = soi_z
 
      !--- setup -- set data, other parameters FIXME: move these above clm_setup if possible for cleanliness --etc
      call host_to_clm_dz(host, pdz, pf_dz_mult, clm)
@@ -171,12 +175,13 @@ clm_last_rst,clm_daily_rst)
           field_capacitypf, res_satpf, clm)
      call host_to_clm_irrigation(host, irr_typepf, irr_cyclepf, irr_ratepf, irr_startpf, &
           irr_stoppf, irr_thresholdpf, irr_thresholdtypepf, clm)
+
+     !--- finalizes setup, moving data onto clm columns
+     call clm_setup_end(clm)
+     call host_to_clm_dz(host, pdz, pf_dz_mult, clm) ! FIXME: shouldn't need to re-clobber dz, z, zi
      call host_to_clm_wc(host, porosity, saturation, clm)
      call host_to_clm_tksat_from_porosity(host, porosity, clm)
-     if (clm_forc_veg == 1) then
-        call host_to_clm_forced_vegetation(host, lai_pf, sai_pf, z0m_pf, displa_pf, clm)
-     end if
-
+     
      !--- potential clobber stuff with restart data
      call clm_restart(1, clm, -1)
      
@@ -186,15 +191,19 @@ clm_last_rst,clm_daily_rst)
   end if
 
   !--- set pressure, get forcing met data, get ready to take the step
-  call host_to_clm_pressure(host, pressure, 1000., clm) ! note unit conversion from m to mm
+  if (clm_forc_veg == 1) then
+     call host_to_clm_forced_vegetation(host, lai_pf, sai_pf, z0m_pf, displa_pf, clm)
+  end if
+  call host_to_clm_pressure(host, pressure, 1000.d0, clm) ! note unit conversion from m to mm
   call host_to_clm_met_data(host, sw_pf, lw_pf, prcp_pf, tas_pf, qatm_pf, u_pf, v_pf, patm_pf, clm)
 
   !--- advance the time step
+  write(*,*) "Advancing clm with time = ", time, " dt = ", dt, " (in hours)"
   call clm_advance_time(clm, host, istep_pf, time*3600, dt*3600) ! note unit conversion from hrs to seconds
   
   !--- potentially write 2d output
   if ((clm%io%dump_current == 1) .or. &
-       (mod(clm%istep, clm%io%dump_interval) == 0)) then
+       ((clm%io%dump_interval > 0) .and. (mod(clm%istep, clm%io%dump_interval) == 0))) then
      if (clm%io%write_binaries /= 0) then
         ! Call subroutine to open (2D-) output files
         call parflow_open_files(clm%clm, clm%drv,clm%rank, ix,iy,istep_pf,clm_output_dir, &
@@ -214,7 +223,7 @@ clm_last_rst,clm_daily_rst)
   call clm_to_host_total_energy_fluxes(host, clm, eflx_lh_pf, eflx_sh_pf, eflx_lwrad_pf, eflx_grnd_pf)
   call clm_to_host_mass_fluxes(host, clm, qflx_tot_pf, qflx_grnd_pf, qflx_soi_pf, &
        qflx_eveg_pf, qflx_tveg_pf, qflx_in_pf, qirr_pf, qirr_inst_pf, irr_flag_pf, junk3d)
-  call clm_to_host_diagnostics(host, clm, swe_pf, junk2d, junk2d, t_g_pf, junk2d, t_soi_pf)
+  call clm_to_host_diagnostics(host, clm, swe_pf, junk2d, junk2d2, t_g_pf, junk2d3, t_soi_pf)
 
   !--- write restart files?
   if (clm_next == 1) then
@@ -258,7 +267,7 @@ clm_last_rst,clm_daily_rst)
      call io_close(clm%io)
 
      !--- destroy memory
-     call clm_host_destroy(host)
+     call host_destroy(host)
      call clm_destroy(clm)
   end if
   

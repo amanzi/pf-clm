@@ -74,6 +74,7 @@ contains
                 clm%clm(t)%dz(k) = dz_base * dz_mult(l)
                 clm%clm(t)%z(k) = clm%clm(t)%zi(k-1) + 0.5 * clm%clm(t)%dz(k)
                 clm%clm(t)%zi(k) = clm%clm(t)%zi(k-1) + clm%clm(t)%dz(k)
+                write(*,*) "dz,z,zi = ", clm%clm(t)%dz(k), clm%clm(t)%z(k), clm%clm(t)%zi(k)
              enddo
 
              do k = 1, nlevsoi-1
@@ -116,23 +117,23 @@ contains
     real(r8) :: rsum
 
     ! push data into the grid
-    do t=1,clm%drv%nch
-       i = clm%tile(t)%col
-       j = clm%tile(t)%row
-       l = host_column_index(host, i,j)
+    do i=1,clm%drv%nc
+       do j=1,clm%drv%nr
+          l = host_column_index(host, i,j)
 
-       clm%grid(i,j)%latdeg = latlon(l,1)
-       clm%grid(i,j)%londeg = latlon(l,2)
-       clm%grid(i,j)%isoicol = color_index(l)
+          clm%grid(i,j)%latdeg = latlon(l,1)
+          clm%grid(i,j)%londeg = latlon(l,2)
+          clm%grid(i,j)%isoicol = color_index(l)
 
-       do m = 1,clm%drv%nt
-          clm%grid(i,j)%fgrd(m) = fractional_ground(l,m)
-       end do
+          do m = 1,clm%drv%nt
+             clm%grid(i,j)%fgrd(m) = fractional_ground(l,m)
+          end do
 
-       do k = 1,nlevsoi
-          l = host_cell_index(host, i,j,k)
-          clm%grid(i,j)%sand(k) = sand(l)
-          clm%grid(i,j)%clay(k) = clay(l)
+          do k = 1,nlevsoi
+             l = host_cell_index(host, i,j,k)
+             clm%grid(i,j)%sand(k) = sand(l)
+             clm%grid(i,j)%clay(k) = clay(l)
+          end do
        end do
     end do
   end subroutine host_to_clm_ground_properties
@@ -161,6 +162,9 @@ contains
     ! locals
     integer :: t,i,j,l
 
+    write(*,*) "Precip = ", precip(1)
+    
+    
     do t=1,clm%drv%nch
        i=clm%tile(t)%col
        j=clm%tile(t)%row
@@ -647,6 +651,7 @@ contains
                 qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) &
                      + clm%clm(t)%qflx_qirr_inst(k) + clm%clm(t)%qflx_infl) &
                      / clm%clm(t)%dz(k)
+                write(*,*) "Soln: qflx(",i,",",j,"1) = ", qflx_subsurface(l)
              else
                 qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) &
                      + clm%clm(t)%qflx_qirr_inst(k)) &

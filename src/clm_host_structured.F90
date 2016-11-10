@@ -153,7 +153,7 @@ contains
     type(host_type), intent(in) :: host
     integer,intent(in) :: iounit
 
-    write(iounit,*) "CLM Structured Host"
+    write(iounit,*) "Host code: PARFLOW"
     write(iounit,*) "local dimensions:"
     write(iounit,*) '  local NX:',host%nx,' NX with ghost:',host%nx_f
     write(iounit,*) '  local NY:',host%ny,' NY with ghost:',host%ny_f

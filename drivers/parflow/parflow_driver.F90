@@ -78,7 +78,7 @@ clm_last_rst,clm_daily_rst)
   real(r8),intent(inout) :: qirr_inst_pf((nx+2)*(ny+2)*(nlevsoi+2))! irrigation applied below ground -- 'instant' (3D)
 
   ! output keys
-  real(r8),intent(in) :: clm_dump_interval                  ! dump inteval for CLM output, passed from PF, always in interval of CLM timestep, not time   !FIXME bug -- should be integer --etc
+  integer,intent(in) :: clm_dump_interval                  ! dump inteval for CLM output, passed from PF, always in interval of CLM timestep, not time   !FIXME bug -- should be integer --etc
   integer,intent(in)  :: clm_1d_out                         ! whether to dump 1d output 0=no, 1=yes
   integer,intent(in)  :: clm_forc_veg                       ! BH: whether vegetation (LAI, SAI, z0m, displa) is being forced 0=no, 1=yes
   integer,intent(in)  :: clm_output_dir_length              ! for output directory
@@ -119,41 +119,61 @@ clm_last_rst,clm_daily_rst)
   real(r8) :: clay((nx+2)*(ny+2)*(nz+2))          ! percent clay FIXME: 0-1 or 0-100? --etc
   integer :: color_index((nx+2)*(ny+2)*3)  ! color index FIXME: document! --etc
   real(r8) :: fractional_ground((nx+2)*(ny+2)*3, 18) ! fraction of land surface of type t
-  
+
+
+  logical :: opened
   !=== begin code ============================================================
 
   if (time == start_time) then
   
      !--- initialize the clm master object
-     call clm_init(clm, rank, nx, ny, 18)
+     call clm_init(clm, rank, nx, ny, 18, VERBOSITY_HIGH)
 
      !--- open log files, set up io options
-     write(*,*) clm_output_dir
      write(output_dir,*) trim(adjustl(clm_output_dir))
-     write(*,*) output_dir
      call io_open(clm%io, output_dir, rank, clm_write_logs)
      clm%io%restart_last = clm_last_rst
      clm%io%restart_daily = clm_daily_rst
-     write(*,*) "clm dump interval = ", clm_dump_interval
-     clm%io%dump_interval = 1 !clm_dump_interval
+     clm%io%dump_interval = clm_dump_interval
      clm%io%dump_current = 0
      clm%io%output_1d = clm_1d_out
      clm%io%write_binaries = write_CLM_binary
-  
+
      !--- initialize the host object, pushing grid info into it
      call host_init(host, nx, ny, nz, topo)
-     if (clm%io%log /= 0) call host_write_to_log(host, clm%io%log)
+     if (io_ok(clm%io, VERBOSITY_LOW)) call host_write_to_log(host, clm%io%log)
      if (clm%io%ranked_log /= 0) call host_write_to_log(host, clm%io%ranked_log)
+     if (io_ok(clm%io, VERBOSITY_LOW)) then
+        write(clm%io%log,*) "  global NX:", gnx
+        write(clm%io%log,*) "  global NY:", gny
+        write(clm%io%log,*) "initial time info:"
+        write(clm%io%log,*) "  starting step:", istep_pf
+        write(clm%io%log,*) "  starting time [hr]:", time
+        write(clm%io%log,*) "  starting dt [hr]:", dt
+     end if
 
      !--- read clm input files, data
      ! FIXME -- can we remove this and use a setter? --etc
      ! FIXME -- fix io to not pass clm_write_logs, instead iounit --etc
      call drv_readclmin(clm%drv, clm%grid, rank, clm_write_logs)
+     if (io_ok(clm%io, VERBOSITY_LOW)) then
+        write(clm%io%log,*) "  CLM startcode for date (1=restart, 2=defined):", clm%drv%startcode
+        write(clm%io%log,*) "  CLM IC (1=restart, 2=defined):", clm%drv%clm_ic
+        if (clm%drv%startcode == 0) then
+           write(clm%io%log,*) "ERROR: startcode = 0"
+           stop
+        end if
+        if (clm%drv%clm_ic == 0) then
+           write(clm%io%log,*) "ERROR: clm_ic = 0"
+           stop
+        end if
+     end if
 
      clm%clm => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
-     if (clm%drv%startcode == 0) stop
-     if (clm%drv%clm_ic == 0) stop
+     !FIXME: this create_n is not tight -- should ignore masked cells --etc
      
+
+     ! BEGIN FIXME: this whole process needs some help and should be cleaned up --etc
      !--- setup -- set dz, ground stuff which is then pushed out to clm1d and tiles in clm_setup
      call parflow_read_ground(host, clm%drv, ix,iy, gnx,gny, latlon, sand,clay, &
           color_index, fractional_ground)
@@ -161,9 +181,6 @@ clm_last_rst,clm_daily_rst)
 
      !--- setup: fills tile space
      call clm_setup_begin(clm)
-
-     !--- initialize the clm master objects tiles, 1d columns
-
 
      !--- set up some clm1d options
      clm%istep = istep_pf
@@ -181,15 +198,23 @@ clm_last_rst,clm_daily_rst)
      call host_to_clm_dz(host, pdz, pf_dz_mult, clm) ! FIXME: shouldn't need to re-clobber dz, z, zi
      call host_to_clm_wc(host, porosity, saturation, clm)
      call host_to_clm_tksat_from_porosity(host, porosity, clm)
+
+     ! END FIXME --etc
      
      !--- potential clobber stuff with restart data
      call clm_restart(1, clm, -1)
+
+     if (io_ok(clm%io, VERBOSITY_LOW)) write(clm%io%log,*) ""
      
   else
      !--- if not intial time, just open logfiles and set water data
      call host_to_clm_wc(host, porosity, saturation, clm)
   end if
 
+  if (io_ok(clm%io, VERBOSITY_LOW)) then
+     write(clm%io%log,*) "Advancing CLM: step=", istep_pf, " time [hr]=", time, " dt [hr]=", dt
+  end if
+  
   !--- set pressure, get forcing met data, get ready to take the step
   if (clm_forc_veg == 1) then
      call host_to_clm_forced_vegetation(host, lai_pf, sai_pf, z0m_pf, displa_pf, clm)

@@ -113,8 +113,7 @@ contains
     real(r8),intent(in) :: fractional_ground(host%ncolumns_g,clm%drv%nt) ! fraction of land surface of type t
 
     ! local
-    integer :: t,i,j,k,l,m
-    real(r8) :: rsum
+    integer :: i,j,k,l,m
 
     ! push data into the grid
     do i=1,clm%drv%nc

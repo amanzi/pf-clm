@@ -44,11 +44,12 @@ contains
   !
   ! initializer, touches all memory
   !------------------------------------------------------
-  subroutine clm_init(this, rank, ncols, nrows, ntypes)
+  subroutine clm_init(this, rank, ncols, nrows, ntypes, verbosity)
     implicit none
     type(clm_type) :: this
     integer,intent(in) :: rank
     integer,intent(in) :: nrows,ncols,ntypes
+    integer,intent(in) :: verbosity
 
     ! set this data
     this%ntiles = nrows * ncols
@@ -66,12 +67,11 @@ contains
     this%drv%nc = this%grid_ncols    
 
     ! initialize io info
-    call io_init(this%io)
+    call io_init(this%io, verbosity)
 
     ! nullify for now, need extra arguments to create
     nullify(this%clm)
     this%tile => tile_create_n(this%ntiles) ! note this may be too many
-    write(*,*) "Creating n tiles : ", this%ntiles
     this%grid => grid_create_2d(ncols, nrows, ntypes)
     return
   end subroutine clm_init
@@ -82,9 +82,6 @@ contains
   subroutine clm_setup_begin(this)
     implicit none
     type(clm_type) :: this
-
-    ! locals
-    integer :: t
 
     call drv_g2tile(this%drv, this%grid, this%tile, this%clm, this%ntiles)
     this%ntiles = this%drv%nch ! note this call calculates the actual number of tiles

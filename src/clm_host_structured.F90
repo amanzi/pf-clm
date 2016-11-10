@@ -1,3 +1,60 @@
+! ------------------------------------------------------------------------------
+! CLM Host file
+!
+! This file, written by the user, provides information on how to map
+! data from the host's data structures to CLM's data structures.  Once
+! this file is written, following this format, clm_host_transfer
+! functions use this capability to do the actual mapping.
+!
+! Required data type:
+!
+!  type host_type
+!    integer :: ncells          ! number of 3D soil cells
+!    integer :: ncells_g        ! length of 3D cell-based arrays
+!    integer :: ncolumns        ! number of 2D (map-view) columns
+!    integer :: ncolumns_g      ! length of 2D surface-based arrays
+!    integer :: planar_mask(1:ncolumns)
+!                               ! mask of columns, 1 if column is used, 0 if not
+!  end type
+!
+! Required methods:
+!
+!  host_cell_index
+!  ----------------
+!  Maps a CLM cell into any cell-based array from the host code.
+!
+!  l = host_cell_index(host, i, j, k)
+!     integer :: i      ! column index of the clm grid
+!     integer :: j      ! row index of the clm grid
+!     integer :: k      ! z index of the column of cells
+!     type(host_type)   ! host
+!
+!     integer :: l      ! index into the host code's cell-based array
+!
+!
+!  host_column_index
+!  ------------------
+!  Maps a CLM cell into any cell-based array from the host code.
+!
+!  l = host_cell_index(host, i, j)
+!     integer :: i      ! column index of the clm grid
+!     integer :: j      ! row index of the clm grid
+!     type(host_type)   ! host
+!
+!     integer :: l      ! index into the host code's column-based array
+!
+!
+!
+! ParFlow host code (a structured example)
+! ============================================
+! ParFlow is a logically-structured mesh which uses masks to hide columns.
+!
+! Indexing is provided through strided vector access.  Most structured
+! codes will implement something very similar to this.
+!
+! Author: Ethan Coon (ecoon _at_ lanl.gov)
+! ------------------------------------------------------------------------------
+
 module clm_host
   use clm_precision
   implicit none

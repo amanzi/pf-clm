@@ -1,3 +1,19 @@
+! ------------------------------------------------------------------------------
+! CLM-to-host data transfer functions
+!
+! This provides an interface for setting and getting data to/from CLM,
+! and is used in writing a driver.
+!
+! This set of functions should not be edited by the user.  Instead, a
+! hostfile should be written (see clm_host_structured or
+! clm_host_unstructured for examples), and these functions should then
+! be used.
+!
+!
+! Author: Ethan Coon (ecoon _at_ lanl.gov)
+! ------------------------------------------------------------------------------
+
+
 module clm_host_transfer
   use clm_precision, only : r8
   use clm_infnan, only : invalid
@@ -31,7 +47,6 @@ contains
 
   !
   ! sets the node depths based on dz
-  !
   ! ------------------------------------------------------------------
   subroutine host_to_clm_dz(host, dz_base, dz_mult, clm)
     use clm1d_varpar, only : nlevsoi
@@ -39,6 +54,7 @@ contains
     real(r8),intent(in) :: dz_mult(host%ncells_g)  ! this oddity of having a scalar dz and a vector
     real(r8),intent(in) :: dz_base                 ! multiplier is thanks to ParFlow history, should
                                                    ! get removed eventually
+                                                   ! dz_base is in [m], dz_mult in [-]
     type(clm_type) :: clm
 
     ! locals
@@ -97,8 +113,6 @@ contains
   
   !
   ! Set soil properties
-  !
-  ! Expected units: all returned in W/m^2
   ! ------------------------------------------------------------------
   subroutine host_to_clm_ground_properties(host, clm, latlon, sand, clay, &
        color_index, fractional_ground)
@@ -106,7 +120,7 @@ contains
     implicit none
     type(host_type),intent(in) :: host
     type(clm_type), intent(inout) :: clm
-    real(r8),intent(in) :: latlon(host%ncolumns_g,2)    ! latitude,longitude [degrees]
+    real(r8),intent(in) :: latlon(host%ncolumns_g,2)    ! latitude,longitude [decimal degrees]
     real(r8),intent(in) :: sand(host%ncells_g)          ! percent sand FIXME: 0-1 or 0-100? --etc
     real(r8),intent(in) :: clay(host%ncells_g)          ! percent clay FIXME: 0-1 or 0-100? --etc
     integer,intent(in) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
@@ -140,8 +154,6 @@ contains
   
   !
   ! Sets the Meterological data forcing from the host code
-  !
-  ! Expected units: pressure [mm]
   ! ------------------------------------------------------------------
   subroutine host_to_clm_met_data(host, eflx_swin, eflx_lwin, precip, &
        air_temp, air_spec_hum, wind_x, wind_y, patm, clm)
@@ -242,7 +254,7 @@ contains
     use clm1d_varpar, only : nlevsoi
     implicit none
     type(host_type),intent(in) :: host
-    real(r8),intent(in) :: pressure(host%ncells_g)
+    real(r8),intent(in) :: pressure(host%ncells_g)  ! [mm] if unit_conversion is 1
     real(r8),intent(in) :: unit_conversion
     type(clm_type) :: clm
 
@@ -264,16 +276,14 @@ contains
   
   !
   ! Copies porosity from a host array to a clm tiled array.
-  !
-  ! Expected units: porosity [-], saturation [-]
   ! ------------------------------------------------------------------
   subroutine host_to_clm_wc(host, porosity, saturation, clm)
     use clm1d_varpar, only : nlevsoi
     use clm1d_varcon, only : denh2o
     implicit none
     type(host_type),intent(in) :: host
-    real(r8),intent(in) :: porosity(host%ncells_g)
-    real(r8),intent(in) :: saturation(host%ncells_g)
+    real(r8),intent(in) :: porosity(host%ncells_g)      ! [-]
+    real(r8),intent(in) :: saturation(host%ncells_g)    ! [-]
     type(clm_type) :: clm
 
     ! locals
@@ -302,14 +312,12 @@ contains
   !
   ! Copies thermal conductivity for the saturated soil from a host
   ! array to a clm tiled array.
-  !
-  ! Expected units: tksat [W/m-K]
   ! ------------------------------------------------------------------
   subroutine host_to_clm_tksat(host, tksat, clm)
     use clm1d_varpar, only : nlevsoi
     implicit none
     type(host_type),intent(in) :: host
-    real(r8),intent(in) :: tksat(host%ncells_g)
+    real(r8),intent(in) :: tksat(host%ncells_g) ! thermal conductivity of saturated soil [W / m-K]
     type(clm_type) :: clm
 
     ! locals
@@ -332,14 +340,12 @@ contains
   !
   ! Calculates thermal conductivity of the saturated soil from a model
   ! based on porosity and thermal conductivity of the grain material.
-  !
-  ! Expected units: porosity [-]
   ! ------------------------------------------------------------------
   subroutine host_to_clm_tksat_from_porosity(host, poro, clm)
     use clm1d_varpar, only : nlevsoi
     implicit none
     type(host_type),intent(in) :: host
-    real(r8),intent(in) :: poro(host%ncells_g)
+    real(r8),intent(in) :: poro(host%ncells_g)  ! [-]
     type(clm_type) :: clm
 
     ! locals

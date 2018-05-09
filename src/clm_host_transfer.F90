@@ -114,8 +114,8 @@ contains
   !
   ! Set soil properties
   ! ------------------------------------------------------------------
-  subroutine host_to_clm_ground_properties(host, clm, latlon, sand, clay, &
-       color_index, fractional_ground)
+  subroutine host_to_clm_ground_properties(host, latlon, sand, clay, &
+       color_index, fractional_ground, clm)
     use clm1d_varpar, only : nlevsoi
     implicit none
     type(host_type),intent(in) :: host
@@ -217,7 +217,8 @@ contains
   end subroutine host_to_clm_met_data
 
   !
-  ! Sets the Meterological data forcing from the host code
+  ! Sets the vegetation data from the host code, for use in case of
+  ! prescribed vegetation.
   !
   ! Expected units: pressure [mm]
   ! ------------------------------------------------------------------

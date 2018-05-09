@@ -8,7 +8,9 @@ module clm_precision
 !#if (defined DOUBLE_PRECISION)
 !  integer, parameter :: r8 = selected_real_kind(12)
 !#else
-  integer, parameter :: r8 = selected_real_kind(8)
+
+!  integer, parameter :: r8 = selected_real_kind(8)
+  integer, parameter :: r8 = C_DOUBLE
 !#endif
 
 end module clm_precision

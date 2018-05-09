@@ -1,3 +1,12 @@
+! ------------------------------------------------------------------------------
+! ParFlow driver for CLM
+!
+! Simply provides a single point of entry for ParFlow-CLM.  This
+! subroutine is wrapped by ParFlow.
+!
+! Author: (many CSM people, adapted by Ethan Coon (ecoon _at_ lanl.gov)
+! ------------------------------------------------------------------------------
+
 subroutine clm_lsm(pressure,saturation,evap_trans,topo,porosity,pf_dz_mult,istep_pf,dt,time,           &
 start_time,pdx,pdy,pdz,ix,iy,nx,ny,nz,nx_f,ny_f,nz_f,nz_rz,ip,npp,npq,npr,gnx,gny,rank,sw_pf,lw_pf,    &
 prcp_pf,tas_pf,u_pf,v_pf,patm_pf,qatm_pf,lai_pf,sai_pf,z0m_pf,displa_pf,                               &
@@ -177,7 +186,7 @@ clm_last_rst,clm_daily_rst)
      !--- setup -- set dz, ground stuff which is then pushed out to clm1d and tiles in clm_setup
      call parflow_read_ground(host, clm%drv, ix,iy, gnx,gny, latlon, sand,clay, &
           color_index, fractional_ground)
-     call host_to_clm_ground_properties(host, clm, latlon, sand, clay, color_index, fractional_ground)
+     call host_to_clm_ground_properties(host, latlon, sand, clay, color_index, fractional_ground, clm)
 
      !--- setup: fills tile space
      call clm_setup_begin(clm)

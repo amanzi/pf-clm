@@ -2,8 +2,8 @@ SRCDIR	      =	.
 OBJECT        = .
 
 
-HOST_SOURCE   = clm_host_structured
-#HOST_SOURCE   = clm_host_unstructured
+#HOST_SOURCE   = clm_host_structured
+HOST_SOURCE   = clm_host_unstructured
 
 default: all
 

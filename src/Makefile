@@ -8,7 +8,7 @@ HOST_SOURCE   = clm_host_unstructured
 default: all
 
 include $(OBJECT)/config/Makefile.config
-FCFLAGS += -I $(CLM_UTILS_DIR) -I $(CLM_CLM1D_DIR) -I $(CLM_DRV_DIR) -fbounds-check -g3
+FCFLAGS += -I $(CLM_UTILS_DIR) -I $(CLM_CLM1D_DIR) -I $(CLM_DRV_DIR) -fbounds-check -g3 -funderscoring
 
 # Order is important due to .mod file creation
 OBJS = \

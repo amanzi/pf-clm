@@ -134,10 +134,10 @@ contains
     type(grid_type) :: grid
     integer, intent(in) :: nt
 
-    grid%dewmx = NaN
-    grid%zlnd = NaN
-    grid%zsno = NaN
-    grid%csoilc = NaN
+    grid%dewmx = 0.1            ! Max allowed dew [mm]
+    grid%zlnd = 0.01            ! Roughness length for soil [m]
+    grid%zsno = 0.0024          ! Roughness length for soil [m]
+    grid%csoilc = 0.0025        ! Drag coefficient for soil under canopy [-]
     grid%wtfact = NaN
     grid%trsmx0 = NaN
     grid%scalez = NaN
@@ -154,9 +154,9 @@ contains
 
     grid%mask = -1
 
-    grid%forc_hgt_u = NaN
-    grid%forc_hgt_t = NaN
-    grid%forc_hgt_q = NaN
+    grid%forc_hgt_u = 10.0      ! Observational height of wind speed [m]
+    grid%forc_hgt_t = 2.0       ! Observational height of temperature [m]
+    grid%forc_hgt_q = 2.0       ! Observational height of relative humidity [m]
     grid%qflx_evap_tot = NaN
     grid%eflx_sh_tot = NaN
     grid%eflx_lh_tot = NaN
@@ -168,11 +168,11 @@ contains
     grid%smpmax = NaN
     grid%isoicol = -1
 
-    grid%capr = NaN
-    grid%cnfac = NaN
-    grid%smpmin = NaN
-    grid%ssi = NaN
-    grid%wimp = NaN
+    grid%capr = 0.34            ! numerical tuning factor to turn first layer T into surface T
+    grid%cnfac = 0.5            ! Crank-Nicholson factor
+    grid%smpmin = -1.e8         ! Restriction for min of soil potential (mm)
+    grid%ssi = 0.033            ! Irreducible water saturation of snow
+    grid%wimp = 0.05            ! water impermeability if porosity < wimp
     grid%pondmx = NaN
 
     grid%tilei = -1

@@ -31,11 +31,11 @@ subroutine parflow_read_ground(host,drv,ix,iy,gnx,gny,latlon,sand,clay,color_ind
 
   integer,intent(in) :: ix,iy,gnx, gny   !global grid indicies from ParFlow
 
-  real(r8),intent(out) :: latlon(host%ncolumns_g,2)    ! latitude,longitude [degrees]
+  real(r8),intent(out) :: latlon(2, host%ncolumns_g)    ! latitude,longitude [degrees]
   real(r8),intent(out) :: sand(host%ncells_g)          ! percent sand FIXME: 0-1 or 0-100? --etc
   real(r8),intent(out) :: clay(host%ncells_g)          ! percent clay FIXME: 0-1 or 0-100? --etc
   integer,intent(out) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
-  real(r8),intent(out) :: fractional_ground(host%ncolumns_g, drv%nt) ! fraction of land surface of type t
+  real(r8),intent(out) :: fractional_ground(drv%nt, host%ncolumns_g) ! fraction of land surface of type t
   
   !=== Local Variables =====================================================
 
@@ -58,12 +58,12 @@ subroutine parflow_read_ground(host,drv,ix,iy,gnx,gny,latlon,sand,clay,color_ind
         if (((c > ix).and.(c <= (ix+host%nx))).and.((r > iy).and.(r <= (iy+host%ny)))) then
            l = host_column_index(host,c-ix,r-iy)
            read(2,*) i,j,          &
-                latlon(l,1), &
-                latlon(l,2), &
+                latlon(1, l), &
+                latlon(2, l), &
                 sand_tmp,              &
                 clay_tmp,              &
                 color_index(l), &
-                (fractional_ground(l,m),m=1,drv%nt)
+                (fractional_ground(m,l),m=1,drv%nt)
 
            do k=1,nlevsoi
               l = host_cell_index(host,c-ix,r-iy,k)

@@ -75,7 +75,8 @@ module clm_host
   end type host_type
 
   public :: host_init, host_destroy, &
-       host_cell_index, host_column_index
+       host_cell_index, host_column_index, &
+       host_write_to_log
 
 contains
 
@@ -116,7 +117,10 @@ contains
        info%topo_mask(col_id, 1) = col_inds(col_id, 2)
        info%topo_mask(col_id, 2) = col_inds(col_id, 2) - (nlevsoi - 1)
        info%topo_mask(col_id, 3) = col_inds(col_id, 1)
-       call ASSERT(info%topo_mask(col_id, 2) <= info%topo_mask(col_id, 3), "Not enough cells in a column, need at least 10")
+       if (info%topo_mask(col_id,2) < info%topo_mask(col_id,3)) then
+          print*, "NOT ENOUGH CELLS IN A COLUMN (must have at least 10)"
+          call abort
+       end if
     end do
 
   end subroutine host_init
@@ -163,4 +167,20 @@ contains
     l = i
   end function host_column_index
 
+  !
+  ! write host info to log file
+  !
+  ! ------------------------------------------------------------------
+  subroutine host_write_to_log(host, iounit)
+    implicit none
+    type(host_type), intent(in) :: host
+    integer,intent(in) :: iounit
+
+    write(iounit,*) "Host code: Unstructured"
+    write(iounit,*) "local dimensions:"
+    write(iounit,*) '  local num cells:',host%ncells
+    write(iounit,*) '  local num columns:',host%ncolumns
+  end subroutine host_write_to_log
+  
+  
 end module clm_host

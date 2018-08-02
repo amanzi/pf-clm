@@ -183,7 +183,7 @@ contains
     ! local
     integer :: col_id
     col_id = i + (j-1) * host%ny    
-    l = 1+i + host%j_incr*j + host%k_incr*(host%topo_mask(col_id,1)-(k-1))
+    l = 1 + i + host%j_incr*j + host%k_incr*(host%topo_mask(col_id,1)-(k-1))
   end function host_cell_index
 
 
@@ -210,7 +210,7 @@ contains
     type(host_type), intent(in) :: host
     integer,intent(in) :: iounit
 
-    write(iounit,*) "Host code: PARFLOW"
+    write(iounit,*) "Host code: Structured"
     write(iounit,*) "local dimensions:"
     write(iounit,*) '  local NX:',host%nx,' NX with ghost:',host%nx_f
     write(iounit,*) '  local NY:',host%ny,' NY with ghost:',host%ny_f

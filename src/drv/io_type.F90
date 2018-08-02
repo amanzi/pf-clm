@@ -57,12 +57,13 @@ contains
     character(len=100) :: rank_string
 
     if (len_trim(output_dir) > 0) then
-       write(io%output_dir,*) output_dir
+       io%output_dir = trim(output_dir)
     end if
     
     if (rank == 0) then
+       io%log_filename = trim(io%output_dir)//'clm.log'
        io%log = 9919 !io_get_stream() !FIXME: need all to use this before any can --etc
-       open(io%log, file="clm.log", action="write")
+       open(io%log, file=io%log_filename, action="write")
     else
        io%log = 0
     end if

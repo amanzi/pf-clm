@@ -11,6 +11,7 @@ module ats_clm
   use clm_type_module
   use clm_host
   use clm_host_transfer
+  use clm1d_type_module
   use io_type_module
   implicit none
 
@@ -19,7 +20,7 @@ module ats_clm
 ! namespace-local data to hold the singleton clm and host instances  
   type(clm_type) :: clm
   type(host_type) :: host
-
+  real(r8) :: year0
   
   public :: ats_to_clm_ground_properties, &
        ats_to_clm_dz, &
@@ -35,7 +36,11 @@ module ats_clm
        clm_to_ats_mass_fluxes, &
        clm_to_ats_total_mass_fluxes, &
        clm_to_ats_total_mass_fluxes_combined, &
-       clm_to_ats_diagnostics  
+       clm_to_ats_diagnostics, &
+       ats_clm_init, &
+       ats_clm_setup_begin, &
+       ats_clm_setup_end, &
+       ats_clm_advance_time
 
 contains
   
@@ -43,7 +48,7 @@ contains
   !
   ! sets the node depths based on dz
   ! ------------------------------------------------------------------
-  subroutine ats_to_clm_dz(dz)
+  subroutine ats_to_clm_dz(dz) bind(C)
     implicit none
     real(r8),intent(in) :: dz(host%ncells_g)
     call host_to_clm_dz(host, 1.d0, dz, clm)
@@ -53,13 +58,13 @@ contains
   ! Set soil properties
   ! ------------------------------------------------------------------
   subroutine ats_to_clm_ground_properties(latlon, sand, clay, &
-       color_index, fractional_ground)
+       color_index, fractional_ground) bind(C)
     implicit none
-    real(r8),intent(in) :: latlon(host%ncolumns_g,2)    ! latitude,longitude [decimal degrees]
+    real(r8),intent(in) :: latlon(2,host%ncolumns_g)    ! latitude,longitude [decimal degrees]
     real(r8),intent(in) :: sand(host%ncells_g)          ! percent sand FIXME: 0-1 or 0-100? --etc
     real(r8),intent(in) :: clay(host%ncells_g)          ! percent clay FIXME: 0-1 or 0-100? --etc
-    integer,intent(in) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
-    real(r8),intent(in) :: fractional_ground(host%ncolumns_g,clm%drv%nt) ! fraction of land surface of type t
+    integer(i4),intent(in) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
+    real(r8),intent(in) :: fractional_ground(clm%drv%nt,host%ncolumns_g) ! fraction of land surface of type t
     call host_to_clm_ground_properties(host, latlon, sand, clay, color_index, fractional_ground, clm)
   end subroutine ats_to_clm_ground_properties
 
@@ -68,7 +73,7 @@ contains
   ! Sets the Meterological data forcing from the host code
   ! ------------------------------------------------------------------
   subroutine ats_to_clm_met_data(eflx_swin, eflx_lwin, precip, &
-       air_temp, air_spec_hum, wind_x, wind_y, patm)
+       air_temp, air_spec_hum, wind_x, wind_y, patm) bind(C)
     implicit none
     real(r8),intent(in) :: eflx_swin(host%ncolumns_g) ! shortwave incoming radiation [W/m^2]
     real(r8),intent(in) :: eflx_lwin(host%ncolumns_g) ! longwave incoming radiation [W/m^2]
@@ -99,9 +104,9 @@ contains
   !
   ! Copies pressure from a host array to a clm tiled array.
   !
-  ! Expected units: pressure [mm]
+  ! Expected units: pressure [Pa]
   ! ------------------------------------------------------------------
-  subroutine ats_to_clm_pressure(pressure, p_atm)
+  subroutine ats_to_clm_pressure(pressure, p_atm) bind(C)
     use clm1d_varcon, only : denh2o, grav
     implicit none
     real(r8),intent(in) :: pressure(host%ncells_g)  ! [Pa]
@@ -116,7 +121,7 @@ contains
   !
   ! Copies porosity from a host array to a clm tiled array.
   ! ------------------------------------------------------------------
-  subroutine ats_to_clm_wc(porosity, saturation)
+  subroutine ats_to_clm_wc(porosity, saturation) bind(C)
     implicit none
     real(r8),intent(in) :: porosity(host%ncells_g)      ! [-]
     real(r8),intent(in) :: saturation(host%ncells_g)    ! [-]
@@ -128,7 +133,7 @@ contains
   ! Calculates thermal conductivity of the saturated soil from a model
   ! based on porosity and thermal conductivity of the grain material.
   ! ------------------------------------------------------------------
-  subroutine ats_to_clm_tksat_from_porosity(poro)
+  subroutine ats_to_clm_tksat_from_porosity(poro) bind(C)
     implicit none
     real(r8),intent(in) :: poro(host%ncells_g)  ! [-]
     call host_to_clm_tksat_from_porosity(host, poro, clm)
@@ -144,14 +149,14 @@ contains
        irr_rate, irr_start, irr_stop, irr_threshold, irr_thresholdtype)
     implicit none
     ! irrigation keys
-    integer, intent(in) :: irr_type            ! irrigation type flag (0=none,1=spray,2=drip,3=instant)
-    integer, intent(in) :: irr_cycle           ! irrigation cycle flag (0=constant,1=deficit)
+    integer(i4), intent(in) :: irr_type            ! irrigation type flag (0=none,1=spray,2=drip,3=instant)
+    integer(i4), intent(in) :: irr_cycle           ! irrigation cycle flag (0=constant,1=deficit)
     real(r8), intent(in) :: irr_rate           ! irrigation application rate for spray and drip [mm/s]
     real(r8), intent(in) :: irr_start          ! irrigation daily start time for constant cycle
     real(r8), intent(in) :: irr_stop           ! irrigation daily stop tie for constant cycle
     real(r8), intent(in) :: irr_threshold      ! irrigation threshold criteria for deficit cycle
                                                  ! (units of soil moisture content)
-    integer, intent(in)  :: irr_thresholdtype  ! irrigation threshold criteria type -- top layer,
+    integer(i4), intent(in)  :: irr_thresholdtype  ! irrigation threshold criteria type -- top layer,
                                                  ! bottom layer, column avg
     call host_to_clm_irrigation(host, irr_type, irr_cycle, &
          irr_rate, irr_start, irr_stop, irr_threshold, irr_thresholdtype, clm)
@@ -163,12 +168,12 @@ contains
   ! Expected units: 
   ! ------------------------------------------------------------------
   subroutine ats_to_clm_et_controls(beta_type, veg_water_stress_type, wilting_point, &
-       field_capacity, res_sat)
+       field_capacity, res_sat) bind(C)
     implicit none
 
     ! ET controls
-    integer, intent(in) :: beta_type              ! beta formulation for bare soil Evap 0=none, 1=linear, 2=cos
-    integer, intent(in) :: veg_water_stress_type  ! veg transpiration water stress formulation
+    integer(i4), intent(in) :: beta_type              ! beta formulation for bare soil Evap 0=none, 1=linear, 2=cos
+    integer(i4), intent(in) :: veg_water_stress_type  ! veg transpiration water stress formulation
                                                   ! 0=none, 1=press, 2=sm
     real(r8), intent(in) :: wilting_point         ! wilting point in m if press-type, in saturation
                                                   ! if soil moisture type
@@ -191,7 +196,7 @@ contains
     real(r8),intent(inout) :: eflx_sh(host%ncolumns_g)          ! sensible heat from ground [W/m^2]
     real(r8),intent(inout) :: eflx_lwrad_out(host%ncolumns_g)   ! outgoing long-wave radiation from ground [W/m^2]
     real(r8),intent(inout) :: eflx_soil(host%ncolumns_g)        ! flux conducted to ground [W/m^2]
-    call host_to_ats_ground_energy_fluxes(host, clm, eflx_lh, eflx_sh, eflx_lwrad_out, eflx_soil)
+    call clm_to_host_ground_energy_fluxes(host, clm, eflx_lh, eflx_sh, eflx_lwrad_out, eflx_soil)
   end subroutine clm_to_ats_ground_energy_fluxes
 
   
@@ -282,20 +287,20 @@ contains
 
 
 
-  subroutine ats_clm_init(ncells, ncolumns, col_inds, rank, verbosity)
+  subroutine ats_clm_init(ncells, ncolumns, col_inds, startcode, rank, verbosity) bind(C)
     use clm_io_config,only : MAX_FILENAME_LENGTH
     implicit none
-    integer,intent(in) :: ncells, ncolumns, rank, verbosity
-    integer,intent(in) :: col_inds(ncolumns, 2)
+    integer(i4),intent(in) :: ncells, ncolumns, startcode, rank, verbosity
+    integer(i4),intent(in) :: col_inds(ncolumns, 2)
 
     ! locals
-    character(len=MAX_FILENAME_LENGTH) :: output_dir
+    character(len=MAX_FILENAME_LENGTH) :: output_dir = "clm/"
     
     !--- initialize the clm master object
     call clm_init(clm, rank, ncolumns, 1, 18, verbosity)
 
     !--- open log files, set up io options
-    write(output_dir,*) "clm/"
+    print*, "Opening logfile: ", output_dir
     call io_open(clm%io, output_dir, rank, 0)
     clm%io%restart_last = 1
     clm%io%restart_daily = 0
@@ -308,27 +313,62 @@ contains
     call host_init(host, ncells, ncells, ncolumns, ncolumns, col_inds)
     if (io_ok(clm%io, VERBOSITY_LOW)) call host_write_to_log(host, clm%io%log)
 
-     !--- read clm input files, data
-     ! FIXME -- can we remove this and use a setter? --etc
-     ! FIXME -- fix io to not pass clm_write_logs, instead iounit --etc
-     call drv_readclmin(clm%drv, clm%grid, rank, clm_write_logs)
-     if (io_ok(clm%io, VERBOSITY_LOW)) then
-        write(clm%io%log,*) "  CLM startcode for date (1=restart, 2=defined):", clm%drv%startcode
-        write(clm%io%log,*) "  CLM IC (1=restart, 2=defined):", clm%drv%clm_ic
-        if (clm%drv%startcode == 0) then
-           write(clm%io%log,*) "ERROR: startcode = 0"
-           stop
-        end if
-        if (clm%drv%clm_ic == 0) then
-           write(clm%io%log,*) "ERROR: clm_ic = 0"
-           stop
-        end if
-     end if
-
-     clm%clm => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
-
-
+    !--- read clm input files, data
+    ! FIXME -- can we remove this and use a setter? --etc
+    ! FIXME -- fix io to not pass clm_write_logs, instead iounit --etc
+    ! FIXME -- hard-coded 1 PFT per cell
+    clm%drv%maxt = 1
+    clm%drv%startcode = startcode
+    clm%drv%clm_ic = startcode
     
-   end subroutine ats_clm_init
+    if (io_ok(clm%io, VERBOSITY_LOW)) then
+       write(clm%io%log,*) "  CLM startcode for date (1=restart, 2=defined):", clm%drv%startcode
+       write(clm%io%log,*) "  CLM IC (1=restart, 2=defined):", clm%drv%clm_ic
+       if (clm%drv%startcode == 0) then
+          write(clm%io%log,*) "ERROR: startcode = 0"
+          stop
+       end if
+       if (clm%drv%clm_ic == 0) then
+          write(clm%io%log,*) "ERROR: clm_ic = 0"
+          stop
+       end if
+    end if
+    
+    clm%clm => clm1d_create_n(clm%ntiles, clm%drv%surfind, clm%drv%soilind, clm%drv%snowind)
+  end subroutine ats_clm_init
 
+  subroutine ats_clm_setup_begin() bind(C)
+    implicit none
+    call clm_setup_begin(clm)
+  end subroutine ats_clm_setup_begin
+
+  subroutine ats_clm_setup_end() bind(C)
+    implicit none
+    call clm_setup_end(clm)
+  end subroutine ats_clm_setup_end
+
+  subroutine ats_clm_advance_time(istep, time, dtime) bind(C)
+    implicit none
+    integer(i4),intent(in) :: istep
+    real(r8),intent(in) :: time, dtime
+    if ((istep.eq.0).or.(clm%drv%time < 0)) then
+       ! tick to set initial time
+       clm%drv%ts = nint(time)
+       call drv_tick(clm%drv)
+    end if
+    call clm_advance_time(clm, host, istep, time, dtime)
+  end subroutine ats_clm_advance_time
+
+  subroutine ats_clm_zero_time(zero_year) bind(C)
+    ! zero time, in years
+    implicit none
+    real(r8),intent(in) :: zero_year
+    year0 = zero_year
+    call drv_time2date(year0, clm%drv%doy, clm%drv%day, clm%drv%gmt,       &
+         clm%drv%yr, clm%drv%mo, clm%drv%da, clm%drv%hr,        &
+         clm%drv%mn, clm%drv%ss)
+    call drv_time2date(year0, clm%drv%sdoy, clm%drv%day, clm%drv%sgmt,       &
+         clm%drv%syr, clm%drv%smo, clm%drv%sda, clm%drv%shr,        &
+         clm%drv%smn, clm%drv%sss)
+  end subroutine ats_clm_zero_time
  end module ats_clm

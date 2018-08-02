@@ -111,7 +111,7 @@ contains
     drv%udef = NaN
 
     drv%vegtf = ''
-    drv%vegpf = ''
+    drv%vegpf = 'drv_vegp.dat'
     drv%poutf1d = ''
     drv%metf1d = ''
     drv%outf1d = ''
@@ -122,27 +122,20 @@ contains
     drv%nr = -1
     drv%nt = 18 ! default 18 IGBP land cover classes
     drv%startcode = 0
-    drv%sss = -1
-    drv%sdoy = -1
-    drv%smn = -1
-    drv%shr = -1
-    drv%sda = -1
-    drv%smo = -1
-    drv%syr = -1
-    drv%ess = -1
-    drv%edoy = -1
-    drv%emn = -1
-    drv%ehr = -1
-    drv%eda = -1
-    drv%emo = -1
-    drv%eyr = -1
-    drv%ss = -1
-    drv%doy = -1
-    drv%mn = -1
-    drv%hr = -1
-    drv%da = -1
-    drv%mo = -1
-    drv%yr = -1
+    drv%sss = 0
+    drv%sdoy = 0
+    drv%smn = 0
+    drv%shr = 0
+    drv%sda = 0
+    drv%smo = 0
+    drv%syr = 0
+    drv%ss = 0
+    drv%doy = 0
+    drv%mn = 0
+    drv%hr = 0
+    drv%da = 0
+    drv%mo = 0
+    drv%yr = 0
 
     drv%ts = -1
     drv%ts_old = -1
@@ -150,14 +143,11 @@ contains
     drv%writeintc = -1
     drv%maxt = -1
 
-    drv%time = NaN
-    drv%etime = NaN
+    drv%time = -1.0
+    drv%etime = -1.0
     drv%pda = -1
-    drv%endtime = -1
-    drv%day = NaN
-    drv%gmt = NaN
-    drv%eday = NaN
-    drv%egmt = NaN
+    drv%day = 0.
+    drv%gmt = 0.
     drv%sgmt = NaN
 
     drv%ctime = NaN

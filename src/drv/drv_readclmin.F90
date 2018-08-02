@@ -82,10 +82,10 @@ subroutine drv_readclmin(drv,grid,rank,clm_write_logs)
       read(10,'(a15)',iostat=ioval) vname
 
       ! CLM domain keys
-      if (vname == 'maxt')        call drv_get1divar(drv%maxt)  
-      if (vname == 'mina')        call drv_get1drvar(drv%mina)  
-      if (vname == 'udef')        call drv_get1drvar(drv%udef)  
-      if (vname == 'vclass')      call drv_get1divar(drv%vclass)  
+      if (vname == 'maxt')        call drv_get1divar(drv%maxt)    
+      if (vname == 'mina')        call drv_get1drvar(drv%mina)    ! 0 by default
+      if (vname == 'udef')        call drv_get1drvar(drv%udef)    ! set by default
+      if (vname == 'vclass')      call drv_get1divar(drv%vclass)  ! no longer used?
 
       ! CLM file names
       if (vname == 'vegtf')       call drv_get1dcvar(drv%vegtf)  

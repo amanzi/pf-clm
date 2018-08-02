@@ -15,7 +15,7 @@
 
 
 module clm_host_transfer
-  use clm_precision, only : r8
+  use clm_precision, only : r8,i4
   use clm_infnan, only : invalid
   use clm_host
   use clm_type_module 
@@ -55,6 +55,7 @@ contains
     real(r8),intent(in) :: dz_base                 ! multiplier is thanks to ParFlow history, should
                                                    ! get removed eventually
                                                    ! dz_base is in [m], dz_mult in [-]
+                                                   ! or alternatively dz_base is 1 and dz_mult in [m]
     type(clm_type) :: clm
 
     ! locals
@@ -120,11 +121,11 @@ contains
     implicit none
     type(host_type),intent(in) :: host
     type(clm_type), intent(inout) :: clm
-    real(r8),intent(in) :: latlon(host%ncolumns_g,2)    ! latitude,longitude [decimal degrees]
+    real(r8),intent(in) :: latlon(2,host%ncolumns_g)    ! latitude,longitude [decimal degrees]
     real(r8),intent(in) :: sand(host%ncells_g)          ! percent sand FIXME: 0-1 or 0-100? --etc
     real(r8),intent(in) :: clay(host%ncells_g)          ! percent clay FIXME: 0-1 or 0-100? --etc
-    integer,intent(in) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
-    real(r8),intent(in) :: fractional_ground(host%ncolumns_g,clm%drv%nt) ! fraction of land surface of type t
+    integer(i4),intent(in) :: color_index(host%ncolumns_g)  ! color index FIXME: document! --etc
+    real(r8),intent(in) :: fractional_ground(clm%drv%nt,host%ncolumns_g) ! fraction of land surface of type t
 
     ! local
     integer :: i,j,k,l,m
@@ -134,12 +135,12 @@ contains
        do j=1,clm%drv%nr
           l = host_column_index(host, i,j)
 
-          clm%grid(i,j)%latdeg = latlon(l,1)
-          clm%grid(i,j)%londeg = latlon(l,2)
+          clm%grid(i,j)%latdeg = latlon(1,l)
+          clm%grid(i,j)%londeg = latlon(2,l)
           clm%grid(i,j)%isoicol = color_index(l)
 
           do m = 1,clm%drv%nt
-             clm%grid(i,j)%fgrd(m) = fractional_ground(l,m)
+             clm%grid(i,j)%fgrd(m) = fractional_ground(m,l)
           end do
 
           do k = 1,nlevsoi
@@ -389,13 +390,10 @@ contains
     type(clm_type) :: clm
 
     ! locals
-    integer :: t,i,j
+    integer :: t
 
     do t=1,clm%drv%nch
        if(host%planar_mask(t) == 1) then
-          i=clm%tile(t)%col
-          j=clm%tile(t)%row
-
           ! for irrigation
           clm%clm(t)%irr_type           = irr_type
           clm%clm(t)%irr_cycle          = irr_cycle
@@ -430,13 +428,10 @@ contains
     type(clm_type) :: clm
 
     ! locals
-    integer :: t,i,j
+    integer :: t
 
     do t=1,clm%drv%nch
        if(host%planar_mask(t) == 1) then
-          i=clm%tile(t)%col
-          j=clm%tile(t)%row
-
           ! for beta and veg stress formulations
           clm%clm(t)%beta_type          = beta_type
           clm%clm(t)%vegwaterstresstype = veg_water_stress_type

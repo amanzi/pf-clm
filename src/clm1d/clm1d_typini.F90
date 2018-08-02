@@ -41,14 +41,14 @@ subroutine clm1d_typini (ntiles, clm)
   do k = 1, ntiles
 
      ! miscellaneous vars...
-     clm(k)%itypwat   = bigint   ! water type
-     clm(k)%itypprc   = bigint   ! precipitation type (from met data) 1= rain 2 =snow
-     clm(k)%isoicol   = bigint   ! color classes for soil albedos
+     clm(k)%itypwat   = -1       ! water type
+     clm(k)%itypprc   = -1       ! precipitation type (from met data) 1= rain 2 =snow
+     clm(k)%isoicol   = -1       ! color classes for soil albedos
      clm(k)%latdeg    = NaN      ! latitude (degrees)
      clm(k)%londeg    = NaN      ! longitude (degrees)
      clm(k)%dtime     = NaN      ! model time step [second]
      clm(k)%dtime_old = NaN      ! previous model time step
-     clm(k)%istep     = NaN      ! number of time step
+     clm(k)%istep     = -1      ! number of time step
 
      ! leaf constants (read into 2-D grid module variables)
      clm(k)%dewmx     = NaN      ! Maximum allowed dew [mm]
@@ -103,7 +103,7 @@ subroutine clm1d_typini (ntiles, clm)
      clm(k)%beta_type          = bigint  
 
      ! irrigation parameters
-     clm(k)%irr_type           = bigint
+     clm(k)%irr_type           = 0     ! no irrigation
      clm(k)%irr_cycle          = bigint
      clm(k)%irr_rate           = NaN
      clm(k)%irr_start          = NaN
@@ -297,7 +297,7 @@ subroutine clm1d_typini (ntiles, clm)
      clm(k)%frac              = NaN  ! fraction of water becoming surface runoff after some TOPMODEL approach
 
      ! reference temperature
-     clm(k)%soi_z             = NaN
+     clm(k)%soi_z             = bigint
   end do
 
 end subroutine clm1d_typini

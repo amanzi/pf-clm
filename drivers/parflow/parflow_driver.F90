@@ -123,11 +123,11 @@ clm_last_rst,clm_daily_rst)
   real(r8) :: junk3d((nx+2)*(ny+2)*(nz+2))       ! placeholder junk data on a 3d surface
   integer :: d_stp                              ! NBE: Dummy for CLM restart
 
-  real(r8) :: latlon((nx+2)*(ny+2)*3,2)    ! latitude,longitude [degrees]
+  real(r8) :: latlon(2,(nx+2)*(ny+2)*3)    ! latitude,longitude [degrees]
   real(r8) :: sand((nx+2)*(ny+2)*(nz+2))          ! percent sand FIXME: 0-1 or 0-100? --etc
   real(r8) :: clay((nx+2)*(ny+2)*(nz+2))          ! percent clay FIXME: 0-1 or 0-100? --etc
-  integer :: color_index((nx+2)*(ny+2)*3)  ! color index FIXME: document! --etc
-  real(r8) :: fractional_ground((nx+2)*(ny+2)*3, 18) ! fraction of land surface of type t
+  integer(i4) :: color_index((nx+2)*(ny+2)*3)  ! color index FIXME: document! --etc
+  real(r8) :: fractional_ground(18,(nx+2)*(ny+2)*3) ! fraction of land surface of type t
 
 
   logical :: opened

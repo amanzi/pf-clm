@@ -101,5 +101,4 @@ subroutine clm1d_coszen (clm, day, coszen)
          + cos(clm%lat)*cosd*cos(hrang)
 
   if (coszen >= -0.001 .and. coszen <= 0.) coszen=0.001
-
 end subroutine clm1d_coszen

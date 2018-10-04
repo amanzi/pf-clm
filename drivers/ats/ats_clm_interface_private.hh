@@ -14,6 +14,17 @@ extern "C" {
   void ats_clm_setup_end();
   void ats_clm_advance_time(int* step, double* time, double* dt);
 
+  void clm_to_ats_total_mass_fluxes(double* qW_surf, double* qW_subsurf);
+  void clm_to_ats_diagnostics(double* swe, double* snow_depth, double* canopy_storage,
+          double* Tskin, double* Tveg, double* Tsoil);
+  void clm_to_ats_mass_fluxes(double* evap_total, double* evap_ground,
+          double* evap_soil, double* evap_canopy, double* tran_veg,
+          double* influx, double* irrigation, double* inst_irrigation, double* irrigation_flag,
+          double* tran_soil);
+  void clm_to_ats_total_energy_fluxes(double* latent_heat, double* sensible_heat,
+          double* lw_out, double* conducted_e);
+  void clm_to_ats_ground_energy_fluxes(double* latent_heat, double* sensible_heat,
+          double* lw_out, double* conducted_e);
 
   void ats_to_clm_et_controls(int* beta_type, int* veg_water_stress_type,
           double* wilting_point, double* field_capacity,
@@ -26,6 +37,8 @@ extern "C" {
                            double* wind_x, double* wind_y, double* patm);
 
   void ats_clm_zero_time(double* zero_year);
+  void ats_clm_initial_state(double* temperature, double* swe);
+
 }
 
 

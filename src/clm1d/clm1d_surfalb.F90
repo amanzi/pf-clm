@@ -160,6 +160,5 @@ subroutine clm1d_surfalb (clm, coszen)
 ! NEW for CLM offline:
 
   clm%surfalb = 35./100.*(clm%albd(1)+clm%albd(2)) +15./100.*(clm%albi(1)+clm%albi(2))
-
   return
 end subroutine clm1d_surfalb

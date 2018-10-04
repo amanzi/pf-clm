@@ -1,5 +1,7 @@
 !#include <misc.h>
 
+#define CLM_UPDATE_SEB_AFTER_ENERGY_SOLVE 0
+
 subroutine clm1d_thermal (clm)
 
   !=========================================================================
@@ -203,11 +205,13 @@ subroutine clm1d_thermal (clm)
   !Temperature and water mass from previous time step
 
   tg = clm%t_soisno(clm%snl+1)
+  print*, "Tskin = ", tg
   do i = clm%snl+1, nlevsoi
      tssbef(i) = clm%t_soisno(i)
      wice0(i) = clm%h2osoi_ice(i)
      wliq0(i) = clm%h2osoi_liq(i)
   enddo
+  print*, "Tsoil = ", tssbef
 
 
   !=========================================================================
@@ -474,11 +478,22 @@ subroutine clm1d_thermal (clm)
   ! 4.1 Thermal conductivity and Heat capacity
   call clm1d_thermalk(tk,cv,clm)
   ! 4.2 Net ground heat flux into the surface and its temperature derivative
-
+  clm%eflx_lwrad_grnd = emg*sb*tg**4
   hs    = clm%sabg + dlrad &
-       + (1-clm%frac_veg_nosno)*emg*clm%forc_lwrad - emg*sb*tg**4 &
-       - (clm%eflx_sh_grnd+clm%qflx_evap_soi*htvp) 
-
+       + (1-clm%frac_veg_nosno)*emg*clm%forc_lwrad - clm%eflx_lwrad_grnd &
+       - (clm%eflx_sh_grnd+clm%qflx_evap_soi*htvp)
+  clm%eflx_soil_grnd = hs
+  
+  print*, "CLM1D energy balance"
+  print*, "----------------------"
+  print*, " outgoing calc: ", emg, sb, tg
+  print*, " incident sw  = ", clm%sabg
+  print*, " incident lw  = ", (1-clm%frac_veg_nosno)*emg*clm%forc_lwrad
+  print*, " inc latent   = ", -clm%qflx_evap_soi*htvp
+  print*, " inc sensible = ", -clm%eflx_sh_grnd
+  print*, " out longwave = ", clm%eflx_lwrad_grnd
+  print*, " resulting balance = ", hs
+  
   dhsdT = - cgrnd - 4.*emg * sb * tg**3
 
   j       = clm%snl+1
@@ -554,8 +569,11 @@ subroutine clm1d_thermal (clm)
 
   tinc = clm%t_soisno(clm%snl+1) - tssbef(clm%snl+1)
 
+#ifdef CLM_UPDATE_SEB_AFTER_ENERGY_SOLVE  
   clm%eflx_sh_grnd =  clm%eflx_sh_grnd + tinc*cgrnds 
   clm%qflx_evap_soi =  clm%qflx_evap_soi + tinc*cgrndl
+  print*, "CORRECTED EVAP SOIL: ", clm%qflx_evap_soi
+  clm%eflx_lwrad_grnd = emg*sb*tg**4
 
   ! Calculation of evaporative potential; flux in kg m**-2 s-1.  
   ! egidif holds the excess energy if all water is evaporated
@@ -566,6 +584,7 @@ subroutine clm1d_thermal (clm)
 
   egidif = max(dble( 0.), clm%qflx_evap_soi - egsmax )
   clm%qflx_evap_soi = min ( clm%qflx_evap_soi, egsmax )
+  print*, "LIMITED EVAP SOIL: ", clm%qflx_evap_soi
   
   clm%eflx_sh_grnd = clm%eflx_sh_grnd + htvp*egidif
   ! Ground heat flux
@@ -573,7 +592,8 @@ subroutine clm1d_thermal (clm)
   clm%eflx_soil_grnd = clm%sabg + dlrad + (1-clm%frac_veg_nosno)*emg*clm%forc_lwrad &
        - emg*sb*tssbef(clm%snl+1)**3*(tssbef(clm%snl+1) + 4.*tinc) &
        - (clm%eflx_sh_grnd+clm%qflx_evap_soi*htvp)
-
+#endif
+  
   clm%eflx_sh_tot = clm%eflx_sh_veg + clm%eflx_sh_grnd
   clm%qflx_evap_tot = clm%qflx_evap_veg + clm%qflx_evap_soi
   clm%eflx_lh_tot= hvap*clm%qflx_evap_veg + htvp*clm%qflx_evap_soi   ! W/m2 (accouting for sublimation)
@@ -592,22 +612,40 @@ subroutine clm1d_thermal (clm)
      if (tg < tfrz) then
         clm%qflx_dew_snow = abs(clm%qflx_evap_soi)
      else
+        ! KNOWN BUG FIX: qflx_dew_grnd is never used by host models, so this doesn't go into the water balance
         clm%qflx_dew_grnd = abs(clm%qflx_evap_soi)
      endif
   endif
 
   ! Outgoing long-wave radiation from canopy + ground
-
   clm%eflx_lwrad_out = ulrad &
        + (1-clm%frac_veg_nosno)*(1.-emg)*clm%forc_lwrad &
        + (1-clm%frac_veg_nosno)*emg*sb * tssbef(clm%snl+1)**4 &
        ! For conservation we put the increase of ground longwave to outgoing
        + 4.*emg*sb*tssbef(clm%snl+1)**3*tinc
-
+  ! really unclear what this is... includes reflected LW, temperature
+  ! increments, and other things that it really shouldn't.  Must be
+  ! some form of net change in longwave out, but definitely is not LW
+  ! out. Also, the last term should have some area fractional thing in
+  ! front of it.  Not sure what this is trying to do... --etc
+  
   ! Radiative temperature
-
+  
   clm%t_rad = (clm%eflx_lwrad_out/sb)**0.25
 
+  print*, "CLM1D energy balance post-temp"
+  print*, "-------------------------------"
+  print*, " incident sw  = ", clm%sabg
+  print*, " incident lw  = ", (1-clm%frac_veg_nosno)*emg*clm%forc_lwrad
+  print*, " inc latent   = ", clm%qflx_evap_soi*htvp
+  print*, " inc sensible = ", clm%eflx_sh_grnd
+  print*, " out longwave = ", clm%eflx_lwrad_grnd
+
+  hs    = clm%sabg + dlrad &
+       + (1-clm%frac_veg_nosno)*emg*clm%forc_lwrad - clm%eflx_lwrad_grnd &
+       - (clm%eflx_sh_grnd+clm%qflx_evap_soi*htvp)
+  print*, " resulting balance = ", hs
+  
   !=========================================================================
   ![7] Soil Energy balance check
   !=========================================================================

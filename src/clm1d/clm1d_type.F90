@@ -125,10 +125,10 @@ module clm1d_type_module
 
      real(r8) :: frac_sno        ! fractional snow cover
      real(r8) :: t_veg           ! leaf temperature [K]
-     real(r8) :: h2ocan          ! depth of water on foliage [kg/m2/s]
+     real(r8) :: h2ocan          ! depth of water on foliage [mm]
      real(r8) :: snowage         ! non dimensional snow age [-]
-     real(r8) :: h2osno          ! snow mass (kg/m2)
-     real(r8) :: h2osno_old      ! snow mass for previous time step (kg/m2)
+     real(r8) :: h2osno          ! swe snow [mm]
+     real(r8) :: h2osno_old      ! swe from previous step [mm]
      real(r8) :: snowdp          ! snow depth (m)
      real(r8) :: t_grnd          ! ground surface temperature [k]
 
@@ -146,6 +146,7 @@ module clm1d_type_module
      real(r8) :: qflx_tran_veg        ! transpiration rate [mm/s]
      real(r8) :: qflx_tran_veg_old  
      real(r8) :: eflx_lwrad_out       ! outgoing long-wave radiation from ground+canopy
+     real(r8) :: eflx_lwrad_grnd      ! outgoing long-wave radiation from ground only
      real(r8) :: eflx_soil_grnd       ! ground heat flux [W/m2]
      real(r8) :: qflx_surf            ! surface runoff (mm h2o/s)
      real(r8) :: t_ref2m              ! 2 m height air temperature [K]

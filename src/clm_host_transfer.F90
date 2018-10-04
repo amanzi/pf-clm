@@ -91,7 +91,6 @@ contains
                 clm%clm(t)%dz(k) = dz_base * dz_mult(l)
                 clm%clm(t)%z(k) = clm%clm(t)%zi(k-1) + 0.5 * clm%clm(t)%dz(k)
                 clm%clm(t)%zi(k) = clm%clm(t)%zi(k-1) + clm%clm(t)%dz(k)
-                write(*,*) "dz,z,zi = ", clm%clm(t)%dz(k), clm%clm(t)%z(k), clm%clm(t)%zi(k)
              enddo
 
              do k = 1, nlevsoi-1
@@ -174,9 +173,6 @@ contains
     ! locals
     integer :: t,i,j,l
 
-    write(*,*) "Precip = ", precip(1)
-    
-    
     do t=1,clm%drv%nch
        i=clm%tile(t)%col
        j=clm%tile(t)%row
@@ -301,10 +297,12 @@ contains
              clm%clm(t)%watsat(k) = porosity(l)
              clm%clm(t)%pf_vol_liq(k) = porosity(l) * saturation(l)
 
-             ! THIS IS A BUG --etc
-             clm%clm(t)%h2osoi_liq(k) = porosity(l) * saturation(l)*clm%clm(t)%dz(1)*denh2o
+             ! KNOWN BUG FIX:
+             ! The old code read:
+             ! clm%clm(t)%h2osoi_liq(k) = porosity(l) * saturation(l)*clm%clm(t)%dz(1)*denh2o
              ! THIS SHOULD READ:
-             !clm(t)%h2osoi_liq(k) = porosity(l) * saturation(l)*clm(t)%dz(k)*denh2o
+             clm%clm(t)%h2osoi_liq(k) = porosity(l) * saturation(l)*clm%clm(t)%dz(k)*denh2o
+             ! --etc
           end do
        end if
     end do
@@ -468,7 +466,7 @@ contains
        if (host%planar_mask(t) == 1) then
           eflx_lh(l) = clm%clm(t)%eflx_lh_grnd
           eflx_sh(l) = clm%clm(t)%eflx_sh_grnd
-          eflx_lwrad_out(l) = clm%clm(t)%eflx_lwrad_out
+          eflx_lwrad_out(l) = clm%clm(t)%eflx_lwrad_grnd
           eflx_soil(l) = clm%clm(t)%eflx_soil_grnd
        else
           eflx_lh(l) = invalid
@@ -595,7 +593,7 @@ contains
     type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
     real(r8),intent(inout) :: qflx_surface(host%ncolumns_g)  ! total mass flux to/from the surface [mm/s]
-    real(r8),intent(inout) :: qflx_subsurface(host%ncells_g) ! total mass flux to/from the subsurface [1/s]
+    real(r8),intent(inout) :: qflx_subsurface(host%ncells_g) ! total mass flux to/from the subsurface [mm/m/s]
 
     ! local
     integer :: t,i,j,k,l
@@ -605,7 +603,7 @@ contains
        j = clm%tile(t)%row
        l = host_column_index(host, i,j)
        if (host%planar_mask(t) == 1) then
-          qflx_surface(l) = clm%clm(t)%qflx_infl
+          qflx_surface(l) = clm%clm(t)%qflx_infl + clm%clm(t)%qflx_dew_grnd
           do k = 1,nlevsoi
              l = host_cell_index(host, i,j,k)
              qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) + clm%clm(t)%qflx_qirr_inst(k))&
@@ -636,7 +634,7 @@ contains
     implicit none
     type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: qflx_subsurface(host%ncells_g) ! total mass flux to/from the subsurface [1/s]
+    real(r8),intent(inout) :: qflx_subsurface(host%ncells_g) ! total mass flux to/from the subsurface [mm/m/s]
 
     ! local
     integer :: t,i,j,k,l
@@ -650,9 +648,8 @@ contains
              l = host_cell_index(host, i,j,k)
              if (k == 1) then 
                 qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) &
-                     + clm%clm(t)%qflx_qirr_inst(k) + clm%clm(t)%qflx_infl) &
+                     + clm%clm(t)%qflx_qirr_inst(k) + clm%clm(t)%qflx_infl) + clm%clm(t)%qflx_dew_grnd &
                      / clm%clm(t)%dz(k)
-                write(*,*) "Soln: qflx(",i,",",j,"1) = ", qflx_subsurface(l)
              else
                 qflx_subsurface(l) = (-clm%clm(t)%qflx_tran_veg*clm%clm(t)%rootfr(k) &
                      + clm%clm(t)%qflx_qirr_inst(k)) &
@@ -681,8 +678,8 @@ contains
     implicit none
     type(host_type),intent(in) :: host
     type(clm_type), intent(in) :: clm
-    real(r8),intent(inout) :: swe(host%ncolumns_g) ! snow-water equivalent (mass) [kg/m^2]
-    real(r8),intent(inout) :: canopy_storage(host%ncolumns_g) ! canopy storage (mass) [kg/m^2]
+    real(r8),intent(inout) :: swe(host%ncolumns_g) ! snow-water equivalent (mass) [mm]
+    real(r8),intent(inout) :: canopy_storage(host%ncolumns_g) ! canopy storage (mass) [mm]
     real(r8),intent(inout) :: snow_depth(host%ncolumns_g)! snow depth [m]
     real(r8),intent(inout) :: T_skin(host%ncolumns_g) ! skin temperature [K]
     real(r8),intent(inout) :: T_veg(host%ncolumns_g) ! leaf temperature [K]

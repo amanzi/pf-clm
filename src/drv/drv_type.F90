@@ -107,7 +107,7 @@ contains
   subroutine drv_init(drv)
     type(drv_type) drv
 
-    drv%mina = 0d0
+    drv%mina = 0.
     drv%udef = NaN
 
     drv%vegtf = ''
@@ -162,9 +162,9 @@ contains
     drv%h2osno_ini = NaN
     drv%sw_ini = NaN
 
-    drv%surfind = -1
-    drv%soilind = -1    
-    drv%snowind = -1
+    drv%surfind = 0
+    drv%soilind = 0
+    drv%snowind = 0
     drv%vclass = -1
     drv%clm_ic = 0
     drv%sat_flag = -1

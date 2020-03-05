@@ -1,8 +1,21 @@
 cmake_minimum_required(VERSION 3.9)
 
-project(clmtest LANGUAGES Fortran)
+set(CLM_LIB clm)
+project(${CLM_LIB} LANGUAGES Fortran)
 
-set(HOST_SOURCE clm_host_unstructured)
+option(UNSTRUCTURED_HOST "ON/OFF builds CLM library for unstructured/structured host [ON]." ON)
+
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set (CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}" CACHE PATH "default install path" FORCE )
+endif()
+
+if (UNSTRUCTURED_HOST)
+  set(HOST_SOURCE clm_host_unstructured)
+else()
+  set(HOST_SOURCE clm_host_structured)
+endif()
+
+set( CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_INSTALL_PREFIX}/include )
 
 set (SRC_FILES
 utils/clm_precision.F90
@@ -70,4 +83,8 @@ clm_type.F90
 clm_host_transfer.F90
 )
 
-add_library(clmtest ${SRC_FILES})
+include_directories(${CMAKE_Fortran_MODULE_DIRECTORY})
+
+add_library(${CLM_LIB} ${SRC_FILES})
+
+install (TARGETS ${CLM_LIB} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib )
